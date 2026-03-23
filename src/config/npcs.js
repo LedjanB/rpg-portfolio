@@ -2,45 +2,44 @@ import { COLORS } from "./theme.js";
 import { YOUR_NAME } from "./player.js";
 
 // ─── NPCs ────────────────────────────────────────────────────────
-// To add an NPC: push a new object. The system auto-blocks their
-// tile for collision and makes them interactable.
-//
-// Fields:
-//   id       — unique identifier
-//   label    — name shown in dialogue box
-//   x, y     — tile position
-//   dir      — facing direction (0=down, 1=up, 2=left, 3=right)
-//   hairC, shirtC — appearance colors
-//   lines    — array of dialogue strings (\n for line breaks)
 export const NPCS = [
   { id: "guide", label: "VILLAGE GUIDE", x: 20, y: 12, dir: 0, hairC: COLORS.uiGold, shirtC: "#CC4444",
     lines: [
-      `Welcome to ${YOUR_NAME}'s\nportfolio town, traveler!`,
-      "Each building holds a piece\nof my story. Walk to any\ndoor and press SPACE!",
-      "Explore the whole map!\nThere's a lake, a river,\nforests, and hidden coins!",
+      `Welcome to ${YOUR_NAME}'s\nportfolio village!`,
+      "Each building tells a part\nof my story — walk to\nany door and press SPACE!",
+      "Read the signposts around\ntown for directions.\nAnd find all 10 coins!",
     ]},
-  { id: "npc2", label: "VILLAGER", x: 24, y: 11, dir: 2, hairC: "#8844AA", shirtC: "#44AA66",
+  { id: "scholar", label: "SCHOLAR", x: 28, y: 12, dir: 2, hairC: "#8844AA", shirtC: "#44AA66",
     lines: [
-      "This developer is seriously\ntalented. Check out the\nLIBRARY to the east!",
-      "Have you found all 10\nhidden coins yet?",
-      "Try zooming in with + key\nto see the pixel art\nup close!",
+      "The LIBRARY to the east\nhas an amazing collection\nof projects!",
+      "Each project was built with\npassion and purpose.\nGo check them out!",
     ]},
-  { id: "npc3", label: "FISHER", x: 5, y: 17, dir: 3, hairC: "#CC6600", shirtC: "#3388CC",
+  { id: "fisher", label: "FISHER", x: 4, y: 23, dir: 3, hairC: "#CC6600", shirtC: "#3388CC",
     lines: [
       "Beautiful lake, isn't it?\nGreat spot for thinking\nabout code architecture.",
-      "Check out the dock! I\ncome here to fish and\nthink about algorithms.",
+      "I hear there's a hidden\ncoin near the water...\nKeep your eyes peeled!",
     ]},
-  { id: "npc4", label: "VILLAGER", x: 35, y: 12, dir: 2, hairC: "#333", shirtC: "#AA3366",
+  { id: "traveler", label: "TRAVELER", x: 38, y: 12, dir: 2, hairC: "#333", shirtC: "#AA3366",
     lines: [
-      "Cross the bridges to\nexplore east of the river!",
-      "The POST OFFICE is south\nif you want to reach out.",
-      "This whole town was built\nwith React and Canvas.\nPretty impressive, right?",
+      "I crossed the river from\nthe eastern lands. This\nvillage is impressive!",
+      "The POST OFFICE down south\nis where you can reach\nthe developer directly.",
+    ]},
+  { id: "merchant", label: "MERCHANT", x: 19, y: 13, dir: 3, hairC: "#AA6622", shirtC: "#228844",
+    lines: [
+      "Welcome to the market!\nBrowse the stalls and\nexplore the square!",
+      "The TOWN HALL up north\nhas the full resume.\nDon't miss it!",
+      "Have you found all the\nhidden coins yet? There\nare 10 scattered around!",
+    ]},
+  { id: "smith", label: "BLACKSMITH", x: 10, y: 18, dir: 0, hairC: "#222", shirtC: "#886644",
+    lines: [
+      "The FORGE is where skills\nare shaped and refined.",
+      "Every tool, every language\nmastered through practice\nand dedication.",
     ]},
 ];
 
 // ─── CAT ─────────────────────────────────────────────────────────
 export const CAT = {
-  startX: 20, startY: 15,
+  startX: 20, startY: 14,
   speed: 1.2,
   lines: [
     "Meow! Purrrr... 🐱",

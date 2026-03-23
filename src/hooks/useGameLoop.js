@@ -10,7 +10,7 @@ import { createCat, updateCat } from "../engine/cat.js";
 import { createClouds } from "../engine/clouds.js";
 import { sfx } from "../engine/sound.js";
 import { moveWithCollision } from "../engine/collision.js";
-import { findNearDoor, findNearNPC, isNearCat } from "../engine/proximity.js";
+import { findNearDoor, findNearNPC, isNearCat, findNearSign } from "../engine/proximity.js";
 import { Render } from "../render/index.js";
 
 export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg) {
@@ -79,6 +79,7 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
       g.nearDoor = findNearDoor(g.px, g.py);
       g.nearNPC = findNearNPC(g.px, g.py);
       g.nearCat = isNearCat(g.px, g.py, cat.x, cat.y);
+      g.nearSign = findNearSign(g.px, g.py);
 
       // Camera
       const camX = Math.max(0, Math.min(g.px - CW/2 + T/2, MAP.col[0].length*T - CW));
@@ -111,11 +112,11 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
         if (g.nearDoor) { const b = BUILDINGS.find(bb => bb.id === g.nearDoor); if (b) Render.hint(ctx, b.doorX*T, b.doorY*T, camX, camY, g.tick); }
         else if (g.nearCat) Render.hint(ctx, cat.x, cat.y, camX, camY, g.tick, "PET");
         else if (g.nearNPC) { const n = NPCS.find(nn => nn.id === g.nearNPC); if (n) Render.hint(ctx, n.x*T, n.y*T, camX, camY, g.tick, "TALK"); }
+        else if (g.nearSign) Render.hint(ctx, g.nearSign.x*T, g.nearSign.y*T, camX, camY, g.tick, "READ");
       }
 
-      // Scanlines + minimap
+      // Scanlines
       ctx.fillStyle = "rgba(0,0,0,0.03)"; for (let sy=0; sy<CH; sy+=4) ctx.fillRect(0, sy, CW, 2);
-      Render.minimap(ctx, g.px, g.py);
 
       raf = requestAnimationFrame(loop);
     };

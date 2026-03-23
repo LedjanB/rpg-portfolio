@@ -87,7 +87,7 @@ export function buildMap() {
     const k = `${fx},${fy}`;
     if (paths.has(k) || cobble.has(k) || blocked.has(k)) return false;
     if (fx<1 || fy<1 || fx>=COLS-1 || fy>=ROWS-1) return false;
-    for (const b of BUILDINGS) if (fx===b.doorX && Math.abs(fy-b.doorY)<=1) return false;
+    for (const b of BUILDINGS) if (Math.abs(fx-b.doorX)<=1 && Math.abs(fy-b.doorY)<=1) return false;
     return true;
   });
 

@@ -3,7 +3,7 @@ import { dock, reeds, lilypads, tree, fence, fountain, smoke, clouds } from "./e
 import { character, cat, coin, easterEgg } from "./entities.js";
 import { prop, flower, torch } from "./props.js";
 import { building } from "./buildings.js";
-import { hint, minimap } from "./ui.js";
+import { hint } from "./ui.js";
 
 export const Render = {
   ground,
@@ -24,5 +24,4 @@ export const Render = {
   torch,
   building,
   hint,
-  minimap,
 };

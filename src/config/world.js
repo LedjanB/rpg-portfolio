@@ -1,112 +1,159 @@
 // ─── WATER REGIONS ───────────────────────────────────────────────
-// Define rectangular water zones as { x, y, w, h }.
-// Sand shores auto-generate around them. Reeds and lilypads spawn randomly on edges.
 export const WATER_ZONES = [
-  { x: 7,  y: 16, w: 5, h: 6 },   // Lake
-  { x: 8,  y: 17, w: 4, h: 1 },   // Lake extra top
-  { x: 31, y: 10, w: 2, h: 19 },  // River (vertical)
-  { x: 31, y: 14, w: 8, h: 2 },   // River (horizontal branch)
+  { x: 5,  y: 22, w: 5, h: 4 },   // Lake (main body)
+  { x: 6,  y: 21, w: 4, h: 1 },   // Lake (wider top — organic shape)
+  { x: 6,  y: 26, w: 3, h: 1 },   // Lake (extension south)
+  { x: 31, y: 4,  w: 2, h: 18 },  // River (north-south)
+  { x: 31, y: 14, w: 6, h: 2 },   // River (eastern branch)
 ];
 
 // ─── BRIDGES ─────────────────────────────────────────────────────
-// Tiles that are walkable over water. Add [x,y] pairs.
-export const BRIDGE_POSITIONS = [[31,12],[32,12],[31,22],[32,22]];
+export const BRIDGE_POSITIONS = [
+  [31,9],[32,9],[31,10],[32,10],    // North bridge (main road)
+  [31,20],[32,20],[31,21],[32,21],  // South bridge (southern road)
+];
 
 // ─── DOCK ────────────────────────────────────────────────────────
-export const DOCK_POSITIONS = [[6,18],[6,19]];
+export const DOCK_POSITIONS = [[4,24],[4,25]];
 
 // ─── COINS ───────────────────────────────────────────────────────
-// Hidden collectibles. Add/remove [x,y] pairs to change them.
 export const COIN_POSITIONS = [
-  [4,9],[38,9],[5,16],[38,28],[12,14],
-  [30,8],[21,16],[35,15],[10,25],[28,25],
+  [4,8],[39,8],[5,21],[39,25],[14,14],
+  [30,7],[21,16],[37,14],[10,27],[28,27],
+];
+
+// ─── INTERACTIVE SIGNS ──────────────────────────────────────────
+// Readable signposts — press SPACE near them to read.
+// Must have a matching signpost prop at the same position.
+export const SIGNS = [
+  { x: 18, y: 9,  text: "Welcome to Portfolio\nVillage! Explore buildings\nto discover my work!" },
+  { x: 8,  y: 9,  text: "← TAVERN\nCome in for stories\nabout the developer!" },
+  { x: 30, y: 9,  text: "LIBRARY →\nDiscover projects and\ntechnical work inside!" },
+  { x: 4,  y: 21, text: "CRYSTAL LAKE\nA peaceful spot to\nthink about code." },
+  { x: 8,  y: 20, text: "← FORGE\nSkills crafted with\nprecision and care." },
+  { x: 30, y: 20, text: "POST OFFICE →\nReach out and get\nin touch anytime!" },
 ];
 
 // ─── PROPS ───────────────────────────────────────────────────────
-// Decorative objects. Types: barrel, crate, bench, well, stall, haystack, signpost
-// All except signpost block movement. To add more: push to array.
 export const PROPS = [
-  { type: "barrel", x: 3,  y: 7 },  { type: "barrel", x: 9,  y: 5 },
-  { type: "crate",  x: 9,  y: 6 },  { type: "bench",  x: 33, y: 8 },
-  { type: "barrel", x: 39, y: 5 },  { type: "well",   x: 19, y: 9 },
-  { type: "bench",  x: 24, y: 9 },  { type: "signpost",x: 18, y: 10 },
+  // TAVERN area
+  { type: "barrel", x: 3,  y: 7 },  { type: "barrel", x: 9,  y: 6 },
+  { type: "crate",  x: 9,  y: 7 },  { type: "bench",  x: 11, y: 8 },
+  // LIBRARY area
+  { type: "bench",  x: 32, y: 8 },  { type: "barrel", x: 38, y: 6 },
+  { type: "crate",  x: 38, y: 7 },
+  // TOWN HALL area
+  { type: "well",   x: 19, y: 8 },  { type: "bench",  x: 25, y: 8 },
+  // Town square — market
   { type: "stall",  x: 19, y: 13 }, { type: "stall",  x: 23, y: 13 },
-  { type: "barrel", x: 3,  y: 25 }, { type: "crate",  x: 3,  y: 26 },
-  { type: "barrel", x: 9,  y: 25 }, { type: "haystack",x: 10, y: 24 },
-  { type: "crate",  x: 39, y: 25 }, { type: "barrel", x: 39, y: 26 },
-  { type: "bench",  x: 12, y: 11 }, { type: "bench",  x: 29, y: 11 },
-  { type: "signpost",x: 30, y: 12 },{ type: "haystack",x: 12, y: 22 },
-  { type: "crate",  x: 29, y: 22 }, { type: "barrel", x: 18, y: 22 },
-  { type: "bench",  x: 5,  y: 16 }, { type: "signpost",x: 8,  y: 15 },
+  { type: "bench",  x: 15, y: 10 }, { type: "bench",  x: 29, y: 10 },
+  // FORGE area
+  { type: "barrel", x: 3,  y: 19 }, { type: "crate",  x: 3,  y: 18 },
+  { type: "barrel", x: 10, y: 18 }, { type: "haystack",x: 11, y: 17 },
+  // POST OFFICE area
+  { type: "crate",  x: 38, y: 18 }, { type: "barrel", x: 38, y: 19 },
+  { type: "bench",  x: 32, y: 20 },
+  // Lakeside
+  { type: "bench",  x: 3,  y: 22 },
+  // Signposts (interactive — matched by SIGNS array above)
+  { type: "signpost", x: 18, y: 9 },  { type: "signpost", x: 8,  y: 9 },
+  { type: "signpost", x: 30, y: 9 },  { type: "signpost", x: 4,  y: 21 },
+  { type: "signpost", x: 8,  y: 20 }, { type: "signpost", x: 30, y: 20 },
+  // Extra along roads
+  { type: "bench",  x: 14, y: 10 }, { type: "bench",  x: 30, y: 10 },
+  { type: "haystack",x: 14, y: 20 }, { type: "crate",  x: 29, y: 20 },
 ];
 
 // ─── FLOWERS ─────────────────────────────────────────────────────
-// [x, y, colorIndex] — colorIndex: 0=pink, 1=yellow, 2=blue, 3=purple
+// [x, y, colorIndex] — 0=pink, 1=yellow, 2=blue, 3=purple
 export const FLOWER_POSITIONS = [
-  [5,9,0],[8,9,1],[13,9,2],[18,9,3],[25,9,0],[28,9,1],[35,9,2],[38,9,3],
-  [5,13,1],[8,14,2],[13,13,3],[25,13,1],[28,14,2],[35,13,3],[38,14,0],
-  [5,21,2],[8,21,3],[13,21,0],[35,21,0],[38,21,1],
-  [5,25,3],[8,25,0],[13,25,1],[35,25,2],[38,25,3],
-  [19,12,0],[20,13,1],[23,12,2],[24,13,3],[19,15,0],[24,15,3],
+  // TAVERN garden
+  [5,9,0],[8,4,1],[9,4,2],[5,4,3],
+  // LIBRARY garden
+  [34,9,1],[37,9,2],[34,4,3],[38,4,0],
+  // Town square gardens
+  [18,11,0],[19,14,1],[23,11,2],[24,14,3],[18,14,0],[25,11,3],
+  [20,15,1],[23,15,2],
+  // Lake shore
+  [3,21,2],[3,26,0],[10,22,3],[10,25,1],
+  // FORGE area
+  [5,20,1],[9,20,2],[3,17,3],
+  // POST OFFICE area
+  [34,20,0],[38,20,1],[39,17,2],
+  // Roads & paths
+  [14,9,0],[29,9,2],[14,20,1],[29,20,3],
+  // Southern meadow
+  [14,25,0],[16,26,1],[27,25,2],[29,26,3],
 ];
 
 // ─── TORCHES ─────────────────────────────────────────────────────
-// [x, y] positions along paths. They flicker and glow.
 export const TORCH_POSITIONS = [
-  [6,10],[10,10],[14,10],[18,10],[25,10],[29,10],[34,10],[38,10],
-  [6,22],[10,22],[14,22],[18,22],[25,22],[29,22],[34,22],[38,22],
-  [21,8],[22,8],[21,14],[22,14],[21,20],[22,20],[21,25],[22,25],
-  [30,12],[33,12],[30,22],[33,22],
+  // Northern road (row 9)
+  [6,8],[10,8],[14,8],[25,8],[29,8],[35,8],[39,8],
+  // Southern road (row 20)
+  [6,19],[10,19],[14,19],[25,19],[29,19],[35,19],[39,19],
+  // Vertical road
+  [21,6],[22,6],[21,15],[22,15],[21,18],[22,18],
+  // Bridge approaches
+  [30,9],[33,9],[30,20],[33,20],
+  // Town square corners
+  [17,11],[26,11],[17,14],[26,14],
 ];
 
 // ─── EXTRA TREE CLUSTERS ─────────────────────────────────────────
-// Beyond the auto-generated border trees, add decorative clusters as [x,y].
 export const EXTRA_TREES = [
-  [10,4],[11,4],[10,5],[11,5],[14,4],[15,4],[14,5],[15,5],
-  [26,4],[27,4],[26,5],[27,5],[30,4],[30,5],
-  [6,14],[8,13],[12,10],[13,10],[30,10],[30,11],[33,10],[33,11],
-  [10,26],[11,26],[10,27],[33,26],[33,27],
-  [20,14],[20,15],[23,14],[23,15],[20,26],[23,26],[20,27],[23,27],
+  // Near TAVERN
+  [11,4],[12,4],[11,5],[12,5],[14,4],[15,4],[14,5],[15,5],
+  // Near LIBRARY
+  [28,4],[29,4],[28,5],[29,5],
+  // Road edges — visual boundaries
+  [13,11],[13,12],[30,11],[30,12],
+  [13,17],[13,18],[30,17],[30,18],
+  // Near lake
+  [10,23],[10,24],[11,22],[11,23],
+  // Center path
+  [19,16],[19,17],[24,16],[24,17],
 ];
 
 // ─── FOREST PATCHES ──────────────────────────────────────────────
-// Dense tree zones defined as { x, y, w, h }.
 export const FOREST_ZONES = [
-  { x: 14, y: 16, w: 4, h: 5 },
-  { x: 25, y: 17, w: 4, h: 4 },
-  { x: 14, y: 26, w: 4, h: 4 },
-  { x: 25, y: 26, w: 4, h: 4 },
+  { x: 14, y: 15, w: 3, h: 3 },   // West-central grove
+  { x: 26, y: 15, w: 3, h: 3 },   // East-central grove
+  { x: 13, y: 24, w: 3, h: 3 },   // Southwest woods
+  { x: 27, y: 24, w: 3, h: 3 },   // Southeast woods
 ];
 
 // ─── COBBLESTONE ZONE (town square) ──────────────────────────────
-export const COBBLE_ZONE = { x: 18, y: 11, w: 8, h: 3 };
+export const COBBLE_ZONE = { x: 17, y: 11, w: 10, h: 4 };
 
 // ─── FOUNTAIN ────────────────────────────────────────────────────
 export const FOUNTAIN_POS = { x: 21, y: 12 };
 
 // ─── EASTER EGG (appears after all coins collected) ──────────────
-export const EASTER_EGG_POS = { x: 21, y: 18 };
+export const EASTER_EGG_POS = { x: 21, y: 16 };
 
 // ─── PATH DEFINITIONS ────────────────────────────────────────────
-// Roads defined as line segments { axis:"h"|"v", fixed, from, to }.
-// h = horizontal (fixed=row), v = vertical (fixed=col).
 export const ROAD_SEGMENTS = [
   // Main horizontal roads
+  { axis: "h", fixed: 9,  from: 3, to: 41 },
   { axis: "h", fixed: 10, from: 3, to: 41 },
-  { axis: "h", fixed: 11, from: 3, to: 41 },
-  { axis: "h", fixed: 22, from: 3, to: 41 },
-  { axis: "h", fixed: 23, from: 3, to: 41 },
+  { axis: "h", fixed: 20, from: 3, to: 41 },
+  { axis: "h", fixed: 21, from: 3, to: 41 },
   // Main vertical road
-  { axis: "v", fixed: 21, from: 3, to: 31 },
-  { axis: "v", fixed: 22, from: 3, to: 31 },
-  // Building connections
-  { axis: "v", fixed: 6,  from: 7,  to: 10 }, { axis: "v", fixed: 7,  from: 7,  to: 10 },
-  { axis: "v", fixed: 36, from: 7,  to: 10 }, { axis: "v", fixed: 37, from: 7,  to: 10 },
-  { axis: "v", fixed: 6,  from: 22, to: 24 }, { axis: "v", fixed: 7,  from: 22, to: 24 },
-  { axis: "v", fixed: 36, from: 22, to: 24 }, { axis: "v", fixed: 37, from: 22, to: 24 },
+  { axis: "v", fixed: 21, from: 6, to: 29 },
+  { axis: "v", fixed: 22, from: 6, to: 29 },
+  // TAVERN connection
+  { axis: "v", fixed: 6,  from: 8,  to: 9 }, { axis: "v", fixed: 7,  from: 8,  to: 9 },
+  // LIBRARY connection
+  { axis: "v", fixed: 35, from: 8,  to: 9 }, { axis: "v", fixed: 36, from: 8,  to: 9 },
   // Bridge approaches
-  { axis: "v", fixed: 30, from: 10, to: 13 }, { axis: "v", fixed: 33, from: 10, to: 13 },
-  { axis: "v", fixed: 30, from: 21, to: 23 }, { axis: "v", fixed: 33, from: 21, to: 23 },
-  // Lake-side path
-  { axis: "h", fixed: 15, from: 5,  to: 8 },  { axis: "h", fixed: 22, from: 5,  to: 8 },
+  { axis: "v", fixed: 30, from: 9,  to: 12 }, { axis: "v", fixed: 33, from: 9,  to: 12 },
+  { axis: "v", fixed: 30, from: 19, to: 21 }, { axis: "v", fixed: 33, from: 19, to: 21 },
+  // Lakeside path
+  { axis: "h", fixed: 21, from: 3,  to: 6 },
+  // Garden cross-path
+  { axis: "h", fixed: 16, from: 18, to: 24 },
+  // Southern exploration path
+  { axis: "h", fixed: 26, from: 5,  to: 39 },
+  { axis: "h", fixed: 27, from: 5,  to: 39 },
 ];
