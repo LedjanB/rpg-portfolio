@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { WORLD, ZOOM_LEVELS, DEFAULT_ZOOM } from "../config/player.js";
-import { NPCS, CAT } from "../config/npcs.js";
+import { NPCS, CAT, HORSE } from "../config/npcs.js";
+import { createHorse } from "../engine/horse.js";
+import { isNearHorse } from "../engine/proximity.js";
 import { COIN_POSITIONS } from "../config/world.js";
 import { T, CW, CH, COLS, ROWS } from "../engine/constants.js";
 import { sfx } from "../engine/sound.js";
@@ -20,7 +22,7 @@ export default function GameCanvas() {
     px: WORLD.playerStart.x * T,
     py: WORLD.playerStart.y * T,
     dir: 0, frame: 0, moving: false, tick: 0,
-    nearDoor: null, nearNPC: null, nearCat: false, nearSign: null, stepCd: 0,
+    nearDoor: null, nearNPC: null, nearCat: false, nearHorse: false, nearSign: null, stepCd: 0,
   });
 
   const [dialogue, setDialogue] = useState(null);
@@ -36,11 +38,18 @@ export default function GameCanvas() {
   const zoomWrapperRef = useRef(null);
   const coinsRef = useRef(COIN_POSITIONS.map(() => false));
   const coinCountRef = useRef(0);
+  const horseRef = useRef(createHorse());
 
   const zoomIn = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i < ZOOM_LEVELS.length-1 ? ZOOM_LEVELS[i+1] : z; }), []);
   const zoomOut = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i > 0 ? ZOOM_LEVELS[i-1] : z; }), []);
 
   useEffect(() => { dialogueRef.current = dialogue; }, [dialogue]);
+  // Auto-close dialogue after timeout (for quest complete message)
+  useEffect(() => {
+    if (!dialogue?.autoClose) return;
+    const timer = setTimeout(() => setDialogue(null), dialogue.autoClose);
+    return () => clearTimeout(timer);
+  }, [dialogue]);
   useEffect(() => { panelRef.current = panel; }, [panel]);
   useEffect(() => { setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0); }, []);
 
@@ -57,8 +66,12 @@ export default function GameCanvas() {
     }
     if (panelRef.current) { setPanel(null); return; }
 
-    // Open building panel
-    if (g.nearDoor) { sfx.door(); setPanel(g.nearDoor); return; }
+    // Open building panel — auto-dismount and make horse wait
+    if (g.nearDoor) {
+      const h = horseRef.current;
+      if (h.mounted) { h.mounted = false; h.waiting = true; }
+      sfx.door(); setPanel(g.nearDoor); return;
+    }
 
     // Pet the cat
     if (g.nearCat) {
@@ -82,8 +95,32 @@ export default function GameCanvas() {
     }
   }, []);
 
-  const keysRef = useInput(handleInteract, zoomIn, zoomOut, setPanel, setDialogue, dialogueRef, panelRef);
-  useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg);
+  // ── Mount / Dismount Horse ──
+  const handleMount = useCallback(() => {
+    const g = gameRef.current;
+    const h = horseRef.current;
+    if (dialogueRef.current || panelRef.current) return;
+
+    if (h.mounted) {
+      // Dismount — horse stays where player is, free to wander
+      h.mounted = false;
+      h.waiting = false;
+      h.x = g.px;
+      h.y = g.py;
+      sfx.step();
+    } else if (isNearHorse(g.px, g.py, h.x, h.y)) {
+      // Mount — snap player onto horse
+      h.mounted = true;
+      h.waiting = false;
+      h.x = g.px;
+      h.y = g.py;
+      h.dir = g.dir;
+      sfx.step();
+    }
+  }, []);
+
+  const keysRef = useInput(handleInteract, zoomIn, zoomOut, setPanel, setDialogue, dialogueRef, panelRef, handleMount);
+  useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue);
 
   // ── Keep zoom centered on the player ──
   useEffect(() => {
@@ -119,7 +156,7 @@ export default function GameCanvas() {
 
       {/* UI overlay — fixed to viewport, never zooms */}
       {dialogue && <DialogueBox speaker={dialogue.speaker} text={dialogue.lines[dialogue.idx]} hasMore={dialogue.idx < dialogue.lines.length - 1} onNext={handleInteract}/>}
-      {panel && <PortfolioPanel sectionId={panel} onClose={() => setPanel(null)}/>}
+      {panel && <PortfolioPanel sectionId={panel} onClose={() => { setPanel(null); horseRef.current.waiting = false; }}/>}
       {isMobile && !dialogue && !panel && <MobileControls keysRef={keysRef} onAction={handleInteract}/>}
 
       {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut}/>}

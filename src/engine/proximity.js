@@ -24,6 +24,10 @@ export function isNearCat(px, py, catX, catY) {
   return Math.abs(px - catX) < T * 1.5 && Math.abs(py - catY) < T * 1.5;
 }
 
+export function isNearHorse(px, py, horseX, horseY) {
+  return Math.abs(px - horseX) < T * 1.8 && Math.abs(py - horseY) < T * 1.8;
+}
+
 export function findNearSign(px, py) {
   for (const s of SIGNS) {
     if (Math.abs(px - s.x * T) < T * 1.5 && Math.abs(py - s.y * T) < T * 1.5) return s;

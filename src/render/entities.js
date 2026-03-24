@@ -23,6 +23,86 @@ export function cat(ctx, catObj, cx, cy) {
   const lo2=Math.sin(catObj.frame*0.5)*2;ctx.fillStyle=C.catDark;ctx.fillRect(px+10+lo2,py+25+bob,3,3);ctx.fillRect(px+18-lo2,py+25+bob,3,3);
 }
 
+export function horse(ctx, horseObj, cx, cy) {
+  const px=horseObj.x-cx,py=horseObj.y-cy; if(px<-T*2||px>CW+T*2||py<-T*2||py>CH+T*2)return;
+  const bob=horseObj.mounted?Math.sin(horseObj.frame*0.25)*2:Math.sin(horseObj.frame*0.15)*0.8;
+  const legSwing=horseObj.mounted?Math.sin(horseObj.frame*0.3)*4:Math.sin(horseObj.frame*0.2)*2;
+  const d=horseObj.dir; // 0=down,1=up,2=left,3=right
+  const facing=(d===2||d===3); // side view shows full body
+
+  // Shadow
+  ctx.fillStyle=C.shadow;ctx.beginPath();ctx.ellipse(px+16,py+32,facing?14:10,4,0,0,Math.PI*2);ctx.fill();
+
+  if (facing) {
+    const flip=d===2?-1:1;
+    ctx.save();
+    if(flip===-1){ctx.translate(px+32,0);ctx.scale(-1,1);ctx.translate(-px,0);}
+    // Back legs
+    ctx.fillStyle="#5a3a20";
+    ctx.fillRect(px+6,py+22+bob,4,10+legSwing*0.5);
+    ctx.fillRect(px+10,py+22+bob,4,10-legSwing*0.5);
+    // Body
+    ctx.fillStyle="#8B6842";ctx.fillRect(px+4,py+12+bob,24,12);
+    // Body highlight
+    ctx.fillStyle="#9C7A52";ctx.fillRect(px+6,py+13+bob,20,4);
+    // Front legs
+    ctx.fillStyle="#7A5832";
+    ctx.fillRect(px+20,py+22+bob,4,10-legSwing*0.5);
+    ctx.fillRect(px+24,py+22+bob,4,10+legSwing*0.5);
+    // Hooves
+    ctx.fillStyle="#3a2a14";
+    ctx.fillRect(px+6,py+30+bob+legSwing*0.5,4,3);
+    ctx.fillRect(px+10,py+30+bob-legSwing*0.5,4,3);
+    ctx.fillRect(px+20,py+30+bob-legSwing*0.5,4,3);
+    ctx.fillRect(px+24,py+30+bob+legSwing*0.5,4,3);
+    // Neck
+    ctx.fillStyle="#8B6842";ctx.fillRect(px+24,py+6+bob,6,10);
+    // Head
+    ctx.fillStyle="#9C7A52";ctx.fillRect(px+26,py+4+bob,8,8);
+    ctx.fillStyle="#8B6842";ctx.fillRect(px+26,py+4+bob,8,3);
+    // Eye
+    ctx.fillStyle="#222";ctx.fillRect(px+31,py+6+bob,2,2);
+    // Ear
+    ctx.fillStyle="#7A5832";ctx.fillRect(px+28,py+2+bob,3,3);
+    // Nostril
+    ctx.fillStyle="#5a3a20";ctx.fillRect(px+33,py+9+bob,1,1);
+    // Mane
+    ctx.fillStyle="#3a2818";
+    ctx.fillRect(px+24,py+4+bob,3,8);
+    ctx.fillRect(px+22,py+6+bob,3,4);
+    // Tail
+    const tw=Math.sin(horseObj.frame*0.1)*3;
+    ctx.fillStyle="#3a2818";ctx.fillRect(px+2+tw,py+12+bob,4,8);ctx.fillRect(px+tw,py+14+bob,3,6);
+    ctx.restore();
+  } else {
+    // Front/back view
+    // Body
+    ctx.fillStyle="#8B6842";ctx.fillRect(px+6,py+12+bob,20,12);
+    ctx.fillStyle="#9C7A52";ctx.fillRect(px+8,py+14+bob,16,4);
+    // Legs
+    ctx.fillStyle="#7A5832";
+    ctx.fillRect(px+8,py+22+bob,4,10+legSwing*0.3);
+    ctx.fillRect(px+20,py+22+bob,4,10-legSwing*0.3);
+    // Hooves
+    ctx.fillStyle="#3a2a14";
+    ctx.fillRect(px+8,py+30+bob+legSwing*0.3,4,3);
+    ctx.fillRect(px+20,py+30+bob-legSwing*0.3,4,3);
+    // Neck & head
+    ctx.fillStyle="#8B6842";ctx.fillRect(px+12,py+6+bob,8,8);
+    ctx.fillStyle="#9C7A52";ctx.fillRect(px+10,py+2+bob,12,7);
+    // Ears
+    ctx.fillStyle="#7A5832";ctx.fillRect(px+10,py+bob,3,3);ctx.fillRect(px+19,py+bob,3,3);
+    // Mane
+    ctx.fillStyle="#3a2818";ctx.fillRect(px+13,py+2+bob,6,6);
+    if(d===0){
+      // Eyes (facing down)
+      ctx.fillStyle="#222";ctx.fillRect(px+12,py+5+bob,2,2);ctx.fillRect(px+18,py+5+bob,2,2);
+      // Nostrils
+      ctx.fillStyle="#5a3a20";ctx.fillRect(px+14,py+7+bob,1,1);ctx.fillRect(px+17,py+7+bob,1,1);
+    }
+  }
+}
+
 export function coin(ctx, cx2, cy2, cx, cy, tick, collected) {
   if(collected)return; const px=cx2*T-cx+16,py=cy2*T-cy+16; if(px<-T||px>CW+T)return;
   const bob=Math.sin(tick*0.08+cx2+cy2)*3,w=Math.abs(Math.sin(tick*0.06+cx2*2))*8+4;

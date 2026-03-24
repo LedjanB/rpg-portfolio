@@ -2,18 +2,20 @@ import { useEffect } from "react";
 import { WORLD } from "../config/player.js";
 import { BUILDINGS } from "../config/buildings.js";
 import { NPCS } from "../config/npcs.js";
-import { COIN_POSITIONS, FLOWER_POSITIONS, TORCH_POSITIONS, PROPS } from "../config/world.js";
+import { COIN_POSITIONS, FLOWER_POSITIONS, LAMPPOST_POSITIONS, PROPS } from "../config/world.js";
 import { T, CW, CH, C } from "../engine/constants.js";
 import { MAP } from "../engine/map.js";
 import { Particles } from "../engine/particles.js";
 import { createCat, updateCat } from "../engine/cat.js";
+import { createHorse, updateHorse } from "../engine/horse.js";
+import { HORSE } from "../config/npcs.js";
 import { createClouds } from "../engine/clouds.js";
 import { sfx } from "../engine/sound.js";
 import { moveWithCollision } from "../engine/collision.js";
-import { findNearDoor, findNearNPC, isNearCat, findNearSign } from "../engine/proximity.js";
+import { findNearDoor, findNearNPC, isNearCat, isNearHorse, findNearSign } from "../engine/proximity.js";
 import { Render } from "../render/index.js";
 
-export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg) {
+export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue) {
   useEffect(() => {
     if (!started) return;
     const canvas = canvasRef.current; if (!canvas) return;
@@ -21,6 +23,7 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
     let raf;
     const particles = new Particles();
     const cat = createCat();
+    const horse = horseRef.current;
     const cloudList = createClouds();
 
     const loop = () => {
@@ -30,11 +33,12 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
       // Movement
       if (!dialogueRef.current && !panelRef.current) {
         const k = keysRef.current;
+        const speed = horse.mounted ? WORLD.playerSpeed * HORSE.rideSpeedMultiplier : WORLD.playerSpeed;
         let dx = 0, dy = 0;
-        if (k.ArrowUp||k.w||k.W) { dy = -WORLD.playerSpeed; g.dir = 1; }
-        if (k.ArrowDown||k.s||k.S) { dy = WORLD.playerSpeed; g.dir = 0; }
-        if (k.ArrowLeft||k.a||k.A) { dx = -WORLD.playerSpeed; g.dir = 2; }
-        if (k.ArrowRight||k.d||k.D) { dx = WORLD.playerSpeed; g.dir = 3; }
+        if (k.ArrowUp||k.w||k.W) { dy = -speed; g.dir = 1; }
+        if (k.ArrowDown||k.s||k.S) { dy = speed; g.dir = 0; }
+        if (k.ArrowLeft||k.a||k.A) { dx = -speed; g.dir = 2; }
+        if (k.ArrowRight||k.d||k.D) { dx = speed; g.dir = 3; }
 
         if (dx || dy) {
           g.moving = true; g.frame++;
@@ -42,6 +46,14 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
           const result = moveWithCollision(g.px, g.py, dx, dy);
           g.px = result.x;
           g.py = result.y;
+
+          // Move horse with player when mounted
+          if (horse.mounted) {
+            horse.x = g.px;
+            horse.y = g.py;
+            horse.dir = g.dir;
+            horse.frame = g.frame;
+          }
 
           // Dust particles on paths
           const pc = Math.floor((g.px+16)/T), pr = Math.floor((g.py+24)/T);
@@ -61,12 +73,29 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
           setCoinCount(coinCountRef.current);
           sfx.coin();
           for (let j=0; j<8; j++) particles.add(cx2*T+16, cy2*T+16, Math.random()*3-1.5, -Math.random()*2-1, 20, "#FFD700", 3);
-          if (coinCountRef.current === COIN_POSITIONS.length) { setEasterEgg(true); sfx.secret(); }
+          if (coinCountRef.current === COIN_POSITIONS.length) {
+            setEasterEgg(true); sfx.secret();
+            setDialogue({ speaker: "QUEST COMPLETE!", lines: [
+              "Congratulations, you found\nall 10 hidden coins! 🎉",
+              "You've fully explored the\nvillage... so does this\nmean I'm hired?? 😏",
+              "Thanks for playing!\nFeel free to reach out\nat the POST OFFICE!",
+            ], idx: 0, autoClose: 10000 });
+            // Reset coins after a delay so the quest is repeatable
+            setTimeout(() => {
+              for (let j = 0; j < coinsRef.current.length; j++) coinsRef.current[j] = false;
+              coinCountRef.current = 0;
+              setCoinCount(0);
+              setEasterEgg(false);
+            }, 12000);
+          }
         }
       });
 
       // Cat AI
       updateCat(cat);
+
+      // Horse AI (only wanders when not mounted and not waiting)
+      updateHorse(horse);
 
       // Leaf particles
       if (g.tick%25===0 && MAP.trees.length>0) {
@@ -79,6 +108,7 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
       g.nearDoor = findNearDoor(g.px, g.py);
       g.nearNPC = findNearNPC(g.px, g.py);
       g.nearCat = isNearCat(g.px, g.py, cat.x, cat.y);
+      g.nearHorse = !horse.mounted && isNearHorse(g.px, g.py, horse.x, horse.y);
       g.nearSign = findNearSign(g.px, g.py);
 
       // Camera
@@ -98,12 +128,18 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
       Render.fountain(ctx, camX, camY, g.tick);
       BUILDINGS.forEach(b => Render.building(ctx, b, camX, camY));
       Render.smoke(ctx, camX, camY, g.tick);
-      TORCH_POSITIONS.forEach(([tc,tr]) => Render.torch(ctx, tc, tr, camX, camY, g.tick));
+      LAMPPOST_POSITIONS.forEach(([tc,tr]) => Render.lamppost(ctx, tc, tr, camX, camY, g.tick));
       COIN_POSITIONS.forEach(([cx2,cy2], i) => Render.coin(ctx, cx2, cy2, camX, camY, g.tick, coinsRef.current[i]));
       if (coinCountRef.current === COIN_POSITIONS.length) Render.easterEgg(ctx, camX, camY, g.tick);
       Render.cat(ctx, cat, camX, camY);
       NPCS.forEach(n => Render.character(ctx, n.x*T, n.y*T, n.dir, g.tick, camX, camY, n.hairC, n.shirtC, false));
-      Render.character(ctx, g.px, g.py, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
+      if (!horse.mounted) Render.horse(ctx, horse, camX, camY);
+      if (horse.mounted) {
+        Render.horse(ctx, horse, camX, camY);
+        Render.character(ctx, g.px, g.py-10, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
+      } else {
+        Render.character(ctx, g.px, g.py, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
+      }
       MAP.trees.forEach(([tc,tr]) => Render.tree(ctx, tc, tr, camX, camY, g.tick));
       particles.draw(ctx, camX, camY);
 
@@ -113,6 +149,8 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
         else if (g.nearCat) Render.hint(ctx, cat.x, cat.y, camX, camY, g.tick, "PET");
         else if (g.nearNPC) { const n = NPCS.find(nn => nn.id === g.nearNPC); if (n) Render.hint(ctx, n.x*T, n.y*T, camX, camY, g.tick, "TALK"); }
         else if (g.nearSign) Render.hint(ctx, g.nearSign.x*T, g.nearSign.y*T, camX, camY, g.tick, "READ");
+        if (g.nearHorse) Render.hint(ctx, horse.x, horse.y, camX, camY, g.tick, "M: RIDE");
+        if (horse.mounted) Render.hint(ctx, g.px, g.py-10, camX, camY, g.tick, "M: DISMOUNT");
       }
 
       // Scanlines
@@ -123,5 +161,5 @@ export function useGameLoop(canvasRef, keysRef, gameRef, coinsRef, coinCountRef,
 
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [started, canvasRef, keysRef, gameRef, coinsRef, coinCountRef, dialogueRef, panelRef, setCoinCount, setEasterEgg]);
+  }, [started, canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, setCoinCount, setEasterEgg, setDialogue]);
 }

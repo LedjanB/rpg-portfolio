@@ -37,6 +37,13 @@ export const NPCS = [
     ]},
 ];
 
+// ─── HORSE ──────────────────────────────────────────────────────
+export const HORSE = {
+  startX: 23, startY: 10,     // Starts near the crossroads
+  speed: 1.0,                  // Wander speed when idle
+  rideSpeedMultiplier: 2.5,    // 2.5x player walking speed when mounted
+};
+
 // ─── CAT ─────────────────────────────────────────────────────────
 export const CAT = {
   startX: 20, startY: 14,

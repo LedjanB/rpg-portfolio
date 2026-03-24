@@ -6,7 +6,7 @@ export default function HUD({ coinCount, easterEgg, zoom, zoomIn, zoomOut }) {
   return (
     <>
       <div style={{ position:"absolute", top:8, left:8, zIndex:10, display:"flex", gap:12, alignItems:"center", pointerEvents:"none" }}>
-        <div style={{ ...f1, fontSize:7, color:"rgba(255,255,255,0.4)", background:"rgba(0,0,0,0.4)", padding:"6px 10px", borderRadius:4 }}>WASD: MOVE &nbsp; SPACE: INTERACT &nbsp; +/-: ZOOM</div>
+        <div style={{ ...f1, fontSize:7, color:"rgba(255,255,255,0.4)", background:"rgba(0,0,0,0.4)", padding:"6px 10px", borderRadius:4 }}>WASD: MOVE &nbsp; SPACE: INTERACT &nbsp; M: MOUNT &nbsp; +/-: ZOOM</div>
         <div style={{ ...f1, fontSize:8, color:C.uiGold, background:"rgba(0,0,0,0.5)", padding:"5px 10px", borderRadius:4, display:"flex", alignItems:"center", gap:6 }}>
           <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:C.coin, boxShadow:`0 0 4px ${C.coin}` }}/>{coinCount}/{COIN_POSITIONS.length}{easterEgg && <span style={{ color:"#0f0", marginLeft:4 }}>★ SECRET UNLOCKED!</span>}
         </div>

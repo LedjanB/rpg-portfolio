@@ -86,18 +86,26 @@ export const FLOWER_POSITIONS = [
   [14,25,0],[16,26,1],[27,25,2],[29,26,3],
 ];
 
-// ─── TORCHES ─────────────────────────────────────────────────────
-export const TORCH_POSITIONS = [
-  // Northern road (row 9)
-  [6,8],[10,8],[14,8],[25,8],[29,8],[35,8],[39,8],
-  // Southern road (row 20)
-  [6,19],[10,19],[14,19],[25,19],[29,19],[35,19],[39,19],
-  // Vertical road
-  [21,6],[22,6],[21,15],[22,15],[21,18],[22,18],
-  // Bridge approaches
-  [30,9],[33,9],[30,20],[33,20],
-  // Town square corners
-  [17,11],[26,11],[17,14],[26,14],
+// ─── LAMP POSTS ─────────────────────────────────────────────────
+// Positioned along road edges for natural street lighting.
+export const LAMPPOST_POSITIONS = [
+  // Northern road — evenly spaced along the top path
+  [3,8],[10,8],[16,8],[27,8],[33,8],[40,8],
+  // Southern road — matching spacing along the bottom path
+  [3,19],[10,19],[16,19],[27,19],[33,19],[40,19],
+  // Main vertical road — lining the north-south corridor
+  [20,6],[23,6],[20,16],[23,16],
+  // Bridge lanterns — one on each side of both bridges
+  [30,8],[33,8],[30,21],[33,21],
+  // Town square corners — framing the cobblestone plaza
+  [17,10],[26,10],[17,15],[26,15],
+  // Building entrances — welcoming lights at each door
+  [5,8],[8,8],     // Tavern entrance
+  [34,8],[37,8],   // Library entrance
+  [5,20],[8,20],   // Forge entrance
+  [34,20],[37,20], // Post Office entrance
+  // Southern exploration path
+  [14,26],[21,26],[28,26],[36,26],
 ];
 
 // ─── EXTRA TREE CLUSTERS ─────────────────────────────────────────
@@ -130,7 +138,7 @@ export const COBBLE_ZONE = { x: 17, y: 11, w: 10, h: 4 };
 export const FOUNTAIN_POS = { x: 21, y: 12 };
 
 // ─── EASTER EGG (appears after all coins collected) ──────────────
-export const EASTER_EGG_POS = { x: 21, y: 16 };
+export const EASTER_EGG_POS = { x: 21, y: 13 };
 
 // ─── PATH DEFINITIONS ────────────────────────────────────────────
 export const ROAD_SEGMENTS = [

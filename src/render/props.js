@@ -20,9 +20,30 @@ export function flower(ctx, c, r, t, cx, cy, tick) {
   ctx.fillStyle="#3A6A2A";ctx.fillRect(px,py+2,2,6);ctx.fillStyle=cols[t];ctx.fillRect(px-2+sw,py-1,6,5);ctx.fillStyle=C.flower2;ctx.fillRect(px+sw,py+1,2,2);
 }
 
-export function torch(ctx, tc, tr, cx, cy, tick) {
-  const px=tc*T-cx+16,py=tr*T-cy+8; if(px<-40||px>CW+40)return;
-  const f=Math.sin(tick*0.15+tc*5)*2+Math.sin(tick*0.23+tr*3);
-  ctx.fillStyle="#5a3a1a";ctx.fillRect(px-2,py+8,4,20);ctx.fillStyle="#FF4400";ctx.fillRect(px-3,py+2+f,6,6);ctx.fillStyle=C.torch;ctx.fillRect(px-2,py+f,4,5);ctx.fillStyle="#FFE060";ctx.fillRect(px-1,py+1+f,2,3);
-  const r=24+f*2;const grd=ctx.createRadialGradient(px,py+4,0,px,py+4,r);grd.addColorStop(0,C.torchGlow+"0.15)");grd.addColorStop(1,C.torchGlow+"0)");ctx.fillStyle=grd;ctx.fillRect(px-r,py+4-r,r*2,r*2);
+export function lamppost(ctx, tc, tr, cx, cy, tick) {
+  const px=tc*T-cx+16,py=tr*T-cy; if(px<-60||px>CW+60)return;
+  const flicker=Math.sin(tick*0.08+tc*3)*0.5+Math.sin(tick*0.13+tr*7)*0.3;
+  // Pole
+  ctx.fillStyle="#3a3a3a";ctx.fillRect(px-2,py+10,4,22);
+  // Base plate
+  ctx.fillStyle="#4a4a4a";ctx.fillRect(px-4,py+30,8,3);
+  // Lamp arm
+  ctx.fillStyle="#3a3a3a";ctx.fillRect(px-1,py+8,2,4);ctx.fillRect(px-6,py+6,12,3);
+  // Lamp housing
+  ctx.fillStyle="#2a2a2a";ctx.fillRect(px-5,py+2,10,5);
+  // Glass (warm glow)
+  ctx.fillStyle="#FFE8A0";ctx.fillRect(px-4,py+3,8,3);
+  // Warm light bulb
+  const bulbBright=0.9+flicker*0.1;
+  ctx.fillStyle=`rgba(255,230,150,${bulbBright})`;ctx.fillRect(px-3,py+3,6,2);
+  // Ground glow (warm circle of light)
+  const r=36+flicker*3;
+  const grd=ctx.createRadialGradient(px,py+28,0,px,py+28,r);
+  grd.addColorStop(0,"rgba(255,220,130,0.12)");grd.addColorStop(0.5,"rgba(255,200,100,0.06)");grd.addColorStop(1,"rgba(255,180,80,0)");
+  ctx.fillStyle=grd;ctx.fillRect(px-r,py+28-r,r*2,r*2);
+  // Upward lamp glow (smaller, brighter)
+  const r2=14+flicker*2;
+  const grd2=ctx.createRadialGradient(px,py+5,0,px,py+5,r2);
+  grd2.addColorStop(0,"rgba(255,230,160,0.25)");grd2.addColorStop(1,"rgba(255,200,100,0)");
+  ctx.fillStyle=grd2;ctx.fillRect(px-r2,py+5-r2,r2*2,r2*2);
 }
