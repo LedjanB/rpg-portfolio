@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { WORLD, ZOOM_LEVELS, DEFAULT_ZOOM } from "../config/player.js";
-import { NPCS, CAT, HORSE } from "../config/npcs.js";
+import { NPCS, CAT } from "../config/npcs.js";
 import { createHorse } from "../engine/horse.js";
 import { isNearHorse } from "../engine/proximity.js";
 import { COIN_POSITIONS } from "../config/world.js";
-import { T, CW, CH, COLS, ROWS } from "../engine/constants.js";
+import { T, CW, CH, COLS, ROWS, C } from "../engine/constants.js";
 import { sfx } from "../engine/sound.js";
 import { useInput } from "../hooks/useInput.js";
 import { useGameLoop } from "../hooks/useGameLoop.js";
@@ -36,9 +36,35 @@ export default function GameCanvas() {
   const dialogueRef = useRef(null);
   const panelRef = useRef(null);
   const zoomWrapperRef = useRef(null);
-  const coinsRef = useRef(COIN_POSITIONS.map(() => false));
-  const coinCountRef = useRef(0);
+  // Load saved progress from localStorage
+  const savedProgress = useRef((() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("rpg-portfolio-progress"));
+      if (saved && Array.isArray(saved.coins) && saved.coins.length === COIN_POSITIONS.length) return saved;
+    } catch (_) { /* ignore */ }
+    return { coins: COIN_POSITIONS.map(() => false), coinCount: 0, easterEgg: false };
+  })());
+
+  const coinsRef = useRef(savedProgress.current.coins);
+  const coinCountRef = useRef(savedProgress.current.coinCount);
   const horseRef = useRef(createHorse());
+
+  // Sync initial saved state into React state
+  useEffect(() => {
+    if (savedProgress.current.coinCount > 0) setCoinCount(savedProgress.current.coinCount);
+    if (savedProgress.current.easterEgg) setEasterEgg(true);
+  }, []);
+
+  // Persist progress to localStorage on changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("rpg-portfolio-progress", JSON.stringify({
+        coins: coinsRef.current,
+        coinCount,
+        easterEgg,
+      }));
+    } catch (_) { /* storage full or unavailable */ }
+  }, [coinCount, easterEgg]);
 
   const zoomIn = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i < ZOOM_LEVELS.length-1 ? ZOOM_LEVELS[i+1] : z; }), []);
   const zoomOut = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i > 0 ? ZOOM_LEVELS[i-1] : z; }), []);
@@ -146,7 +172,7 @@ export default function GameCanvas() {
 
   // ── Game Screen ──
   return (
-    <div style={{ width:"100%", height:"100vh", background:"#050808", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+    <div style={{ width:"100%", height:"100vh", background:C.pageBg, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
       <style>{KEYFRAMES}</style>
 
       {/* Canvas — only this zooms */}

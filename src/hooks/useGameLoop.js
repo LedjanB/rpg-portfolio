@@ -7,7 +7,7 @@ import { T, CW, CH, C } from "../engine/constants.js";
 import { MAP } from "../engine/map.js";
 import { Particles } from "../engine/particles.js";
 import { createCat, updateCat } from "../engine/cat.js";
-import { createHorse, updateHorse } from "../engine/horse.js";
+import { updateHorse } from "../engine/horse.js";
 import { HORSE } from "../config/npcs.js";
 import { createClouds } from "../engine/clouds.js";
 import { sfx } from "../engine/sound.js";
@@ -19,12 +19,29 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
   useEffect(() => {
     if (!started) return;
     const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d"); ctx.imageSmoothingEnabled = false;
+    const ctx = canvas.getContext("2d");
+    // DPI scaling for sharp rendering on high-density displays
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = CW * dpr;
+    canvas.height = CH * dpr;
+    canvas.style.width = CW + "px";
+    canvas.style.height = CH + "px";
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = false;
     let raf;
     const particles = new Particles();
     const cat = createCat();
     const horse = horseRef.current;
     const cloudList = createClouds();
+
+    // Pre-render scanline pattern for performance
+    const scanlineCanvas = document.createElement("canvas");
+    scanlineCanvas.width = 1;
+    scanlineCanvas.height = 4;
+    const slCtx = scanlineCanvas.getContext("2d");
+    slCtx.fillStyle = "rgba(0,0,0,0.03)";
+    slCtx.fillRect(0, 0, 1, 2);
+    const scanlinePattern = ctx.createPattern(scanlineCanvas, "repeat");
 
     const loop = () => {
       const g = gameRef.current;
@@ -100,7 +117,7 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       // Leaf particles
       if (g.tick%25===0 && MAP.trees.length>0) {
         const [tx,ty] = MAP.trees[Math.floor(Math.random()*MAP.trees.length)];
-        particles.add(tx*T+8+Math.random()*16, ty*T+4, -0.2+Math.random()*0.4, 0.3+Math.random()*0.3, 80+Math.random()*40, "#8B5A2B", 2);
+        particles.add(tx*T+8+Math.random()*16, ty*T+4, -0.2+Math.random()*0.4, 0.3+Math.random()*0.3, 80+Math.random()*40, C.leaf, 2);
       }
       particles.update();
 
@@ -153,8 +170,8 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         if (horse.mounted) Render.hint(ctx, g.px, g.py-10, camX, camY, g.tick, "M: DISMOUNT");
       }
 
-      // Scanlines
-      ctx.fillStyle = "rgba(0,0,0,0.03)"; for (let sy=0; sy<CH; sy+=4) ctx.fillRect(0, sy, CW, 2);
+      // Scanlines (cached pattern)
+      if (scanlinePattern) { ctx.fillStyle = scanlinePattern; ctx.fillRect(0, 0, CW, CH); }
 
       raf = requestAnimationFrame(loop);
     };

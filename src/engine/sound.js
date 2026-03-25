@@ -1,8 +1,17 @@
 // ─── SOUND ENGINE (8-bit Web Audio) ──────────────────────────────
 let _audioCtx = null;
+let _muted = localStorage.getItem("rpg-portfolio-muted") === "true";
 function getAudio() { if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return _audioCtx; }
 
+export function isMuted() { return _muted; }
+export function toggleMute() {
+  _muted = !_muted;
+  try { localStorage.setItem("rpg-portfolio-muted", _muted); } catch (_) { /* */ }
+  return _muted;
+}
+
 export function playTone(freq, dur, type = "square", vol = 0.08) {
+  if (_muted) return;
   try { const a = getAudio(), o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(freq, a.currentTime); g.gain.setValueAtTime(vol, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur); o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur); } catch (_) { /* Audio may be blocked by browser autoplay policy */ }
 }
 

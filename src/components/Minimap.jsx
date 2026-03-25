@@ -7,6 +7,11 @@ import { f1 } from "../styles.js";
 
 const MW = 130, MH = Math.round(MW * ROWS / COLS);
 const SX = MW / COLS, SY = MH / ROWS;
+const ceilSX = Math.ceil(SX), ceilSY = Math.ceil(SY);
+
+// Pre-parse string keys into numeric arrays (avoids split/map every frame)
+const waterTiles = [...MAP.water].map(k => { const [x, y] = k.split(",").map(Number); return [x, y]; });
+const pathTiles = [...MAP.paths].map(k => { const [x, y] = k.split(",").map(Number); return [x, y]; });
 
 export default function Minimap({ gameRef, zoom }) {
   const canvasRef = useRef(null);
@@ -23,43 +28,41 @@ export default function Minimap({ gameRef, zoom }) {
       ctx.clearRect(0, 0, MW, MH);
 
       // Background
-      ctx.fillStyle = "#1a2a1a";
+      ctx.fillStyle = C.minimapBg;
       ctx.fillRect(0, 0, MW, MH);
 
       // Water
-      MAP.water.forEach(k => {
-        const [wx, wy] = k.split(",").map(Number);
-        ctx.fillStyle = "#2060a0";
-        ctx.fillRect(wx * SX, wy * SY, Math.ceil(SX), Math.ceil(SY));
+      ctx.fillStyle = C.minimapWater;
+      waterTiles.forEach(([wx, wy]) => {
+        ctx.fillRect(wx * SX, wy * SY, ceilSX, ceilSY);
       });
 
       // Paths
       ctx.fillStyle = "rgba(160,144,64,0.35)";
-      MAP.paths.forEach(k => {
-        const [px, py] = k.split(",").map(Number);
-        ctx.fillRect(px * SX, py * SY, Math.ceil(SX), Math.ceil(SY));
+      pathTiles.forEach(([px, py]) => {
+        ctx.fillRect(px * SX, py * SY, ceilSX, ceilSY);
       });
 
       // Trees (subtle)
       ctx.fillStyle = "rgba(30,96,20,0.45)";
       MAP.trees.forEach(([tx, ty]) => {
-        ctx.fillRect(tx * SX, ty * SY, Math.ceil(SX), Math.ceil(SY));
+        ctx.fillRect(tx * SX, ty * SY, ceilSX, ceilSY);
       });
 
       // Buildings
       BUILDINGS.forEach(b => {
-        ctx.fillStyle = "#aa8855";
+        ctx.fillStyle = C.minimapBuilding;
         ctx.fillRect(b.x * SX, b.y * SY, b.w * SX, b.h * SY);
         // Door indicator
         if (b.doorX !== undefined) {
-          ctx.fillStyle = "#ffcc44";
-          ctx.fillRect(b.doorX * SX, b.doorY * SY, Math.ceil(SX), Math.ceil(SY));
+          ctx.fillStyle = C.minimapDoor;
+          ctx.fillRect(b.doorX * SX, b.doorY * SY, ceilSX, ceilSY);
         }
       });
 
       // NPCs
       NPCS.forEach(n => {
-        ctx.fillStyle = "#ff6688";
+        ctx.fillStyle = C.minimapNPC;
         ctx.fillRect(n.x * SX - 1, n.y * SY - 1, 3, 3);
       });
 
@@ -82,11 +85,11 @@ export default function Minimap({ gameRef, zoom }) {
       const playerMY = (g.py / T) * SY;
       ctx.beginPath();
       ctx.arc(playerMX, playerMY, pulse + 1, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(68,136,255,0.3)";
+      ctx.fillStyle = C.minimapPlayerGlow;
       ctx.fill();
       ctx.beginPath();
       ctx.arc(playerMX, playerMY, pulse, 0, Math.PI * 2);
-      ctx.fillStyle = "#4488ff";
+      ctx.fillStyle = C.minimapPlayer;
       ctx.fill();
 
       raf = requestAnimationFrame(draw);
@@ -109,6 +112,8 @@ export default function Minimap({ gameRef, zoom }) {
         ref={canvasRef}
         width={MW}
         height={MH}
+        role="img"
+        aria-label="Game minimap showing player position and landmarks"
         style={{
           width: MW, height: MH,
           display: "block",
@@ -116,7 +121,7 @@ export default function Minimap({ gameRef, zoom }) {
           borderRadius: 2,
         }}
       />
-      <div style={{
+      <div aria-hidden="true" style={{
         ...f1, fontSize: 6,
         color: "rgba(255,255,255,0.35)",
         textAlign: "center",

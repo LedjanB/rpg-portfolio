@@ -1,4 +1,4 @@
-import { T, C } from "../engine/constants.js";
+import { C } from "../engine/constants.js";
 
 export function hint(ctx, x, y, cx, cy, tick, label="SPACE") {
   const px=x-cx+16,py=y-cy-12,bob=Math.sin(tick*0.08)*3,tw=label.length*5+10;

@@ -36,4 +36,16 @@ export const COLORS = {
   torch: "#FF8820", torchGlow: "rgba(255,160,40,",
   coin: "#FFD700", coinDark: "#DAA520",
   white: "#FFF", black: "#000", shadow: "rgba(0,0,0,0.2)",
+  // Backgrounds
+  pageBg: "#050808", introBgInner: "#0f1a0f",
+  // Grays (UI)
+  gray1: "#555", gray2: "#666", gray3: "#888", gray4: "#aaa", gray5: "#bbb", gray6: "#ccc",
+  // Status
+  error: "#FF6B6B", easterGreen: "#0f0",
+  // Minimap
+  minimapBg: "#1a2a1a", minimapWater: "#2060a0", minimapBuilding: "#aa8855",
+  minimapDoor: "#ffcc44", minimapNPC: "#ff6688", minimapPlayer: "#4488ff",
+  minimapPlayerGlow: "rgba(68,136,255,0.3)",
+  // Misc
+  leaf: "#8B5A2B",
 };
