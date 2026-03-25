@@ -5,7 +5,11 @@ import { createHorse } from "../engine/horse.js";
 import { isNearHorse } from "../engine/proximity.js";
 import { COIN_POSITIONS } from "../config/world.js";
 import { T, CW, CH, COLS, ROWS, C } from "../engine/constants.js";
-import { sfx } from "../engine/sound.js";
+import { sfx, startMusic, stopMusic } from "../engine/sound.js";
+import { createFishingState, findNearFishingSpot, startFishing, reelIn } from "../engine/fishing.js";
+import { createBreakableState, findNearBreakable, breakProp } from "../engine/breakables.js";
+import { createQuestState, recordBuildingVisit, getQuestProgress } from "../engine/quests.js";
+import { createGardenState, findNearPlot, plantSeed } from "../engine/garden.js";
 import { useInput } from "../hooks/useInput.js";
 import { useGameLoop } from "../hooks/useGameLoop.js";
 import { KEYFRAMES } from "../styles.js";
@@ -23,6 +27,7 @@ export default function GameCanvas() {
     py: WORLD.playerStart.y * T,
     dir: 0, frame: 0, moving: false, tick: 0,
     nearDoor: null, nearNPC: null, nearCat: false, nearHorse: false, nearSign: null, stepCd: 0,
+    nearFishingSpot: null, nearBreakable: -1, nearGardenPlot: -1,
   });
 
   const [dialogue, setDialogue] = useState(null);
@@ -32,27 +37,42 @@ export default function GameCanvas() {
   const [coinCount, setCoinCount] = useState(0);
   const [easterEgg, setEasterEgg] = useState(false);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [questProgress, setQuestProgress] = useState({ visited: 0, total: 8 });
+  const [fishCount, setFishCount] = useState(0);
 
   const dialogueRef = useRef(null);
   const panelRef = useRef(null);
   const zoomWrapperRef = useRef(null);
+
   // Load saved progress from localStorage
   const savedProgress = useRef((() => {
     try {
       const saved = JSON.parse(localStorage.getItem("rpg-portfolio-progress"));
       if (saved && Array.isArray(saved.coins) && saved.coins.length === COIN_POSITIONS.length) return saved;
     } catch (_) { /* ignore */ }
-    return { coins: COIN_POSITIONS.map(() => false), coinCount: 0, easterEgg: false };
+    return { coins: COIN_POSITIONS.map(() => false), coinCount: 0, easterEgg: false, quest: null, fishCount: 0, garden: null };
   })());
 
   const coinsRef = useRef(savedProgress.current.coins);
   const coinCountRef = useRef(savedProgress.current.coinCount);
   const horseRef = useRef(createHorse());
+  const fishingRef = useRef(createFishingState());
+  const breakablesRef = useRef(createBreakableState());
+  const questRef = useRef((() => {
+    if (savedProgress.current.quest) return savedProgress.current.quest;
+    return createQuestState();
+  })());
+  const gardenRef = useRef((() => {
+    if (savedProgress.current.garden) return savedProgress.current.garden;
+    return createGardenState();
+  })());
 
   // Sync initial saved state into React state
   useEffect(() => {
     if (savedProgress.current.coinCount > 0) setCoinCount(savedProgress.current.coinCount);
     if (savedProgress.current.easterEgg) setEasterEgg(true);
+    if (savedProgress.current.fishCount > 0) setFishCount(savedProgress.current.fishCount);
+    if (savedProgress.current.quest) setQuestProgress(getQuestProgress(savedProgress.current.quest));
   }, []);
 
   // Persist progress to localStorage on changes
@@ -62,15 +82,17 @@ export default function GameCanvas() {
         coins: coinsRef.current,
         coinCount,
         easterEgg,
+        quest: questRef.current,
+        fishCount,
+        garden: gardenRef.current,
       }));
     } catch (_) { /* storage full or unavailable */ }
-  }, [coinCount, easterEgg]);
+  }, [coinCount, easterEgg, fishCount, questProgress]);
 
   const zoomIn = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i < ZOOM_LEVELS.length-1 ? ZOOM_LEVELS[i+1] : z; }), []);
   const zoomOut = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i > 0 ? ZOOM_LEVELS[i-1] : z; }), []);
 
   useEffect(() => { dialogueRef.current = dialogue; }, [dialogue]);
-  // Auto-close dialogue after timeout (for quest complete message)
   useEffect(() => {
     if (!dialogue?.autoClose) return;
     const timer = setTimeout(() => setDialogue(null), dialogue.autoClose);
@@ -79,9 +101,26 @@ export default function GameCanvas() {
   useEffect(() => { panelRef.current = panel; }, [panel]);
   useEffect(() => { setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0); }, []);
 
+  // Start background music when game starts
+  useEffect(() => {
+    if (started) startMusic();
+    return () => stopMusic();
+  }, [started]);
+
   // ── Interaction Handler ──
   const handleInteract = useCallback(() => {
     const g = gameRef.current;
+    const fs = fishingRef.current;
+
+    // If fishing, handle reel-in
+    if (fs.state === "bite" || fs.state === "waiting") {
+      const caught = reelIn(fs);
+      if (caught) {
+        sfx.fishCatch();
+        setFishCount(fc => fc + 1);
+      }
+      return;
+    }
 
     // Advance or close dialogue
     if (dialogueRef.current) {
@@ -96,7 +135,25 @@ export default function GameCanvas() {
     if (g.nearDoor) {
       const h = horseRef.current;
       if (h.mounted) { h.mounted = false; h.waiting = true; }
-      sfx.door(); setPanel(g.nearDoor); return;
+      sfx.door();
+      setPanel(g.nearDoor);
+      // Record building visit for quest
+      const justCompleted = recordBuildingVisit(questRef.current, g.nearDoor);
+      setQuestProgress(getQuestProgress(questRef.current));
+      if (justCompleted) {
+        setTimeout(() => {
+          sfx.quest();
+          setDialogue({
+            speaker: "QUEST COMPLETE!",
+            lines: [
+              "You've visited every\nbuilding in the village! 🎉",
+              "The Grand Tour is done!\nYou truly explored it all!",
+            ],
+            idx: 0, autoClose: 8000,
+          });
+        }, 500);
+      }
+      return;
     }
 
     // Pet the cat
@@ -118,6 +175,32 @@ export default function GameCanvas() {
     if (g.nearSign) {
       sfx.talk();
       setDialogue({ speaker: "SIGNPOST", lines: [g.nearSign.text], idx: 0 });
+      return;
+    }
+
+    // Start fishing
+    if (g.nearFishingSpot && fs.state === "idle") {
+      const spot = findNearFishingSpot(g.px, g.py);
+      if (spot && startFishing(fs, spot)) {
+        sfx.splash();
+        return;
+      }
+    }
+
+    // Break nearby prop
+    if (g.nearBreakable >= 0) {
+      if (breakProp(g.nearBreakable)) {
+        sfx.breakProp();
+        return;
+      }
+    }
+
+    // Plant in garden
+    if (g.nearGardenPlot >= 0) {
+      if (plantSeed(gardenRef.current, g.nearGardenPlot)) {
+        sfx.plant();
+        return;
+      }
     }
   }, []);
 
@@ -128,14 +211,12 @@ export default function GameCanvas() {
     if (dialogueRef.current || panelRef.current) return;
 
     if (h.mounted) {
-      // Dismount — horse stays where player is, free to wander
       h.mounted = false;
       h.waiting = false;
       h.x = g.px;
       h.y = g.py;
       sfx.step();
     } else if (isNearHorse(g.px, g.py, h.x, h.y)) {
-      // Mount — snap player onto horse
       h.mounted = true;
       h.waiting = false;
       h.x = g.px;
@@ -146,7 +227,7 @@ export default function GameCanvas() {
   }, []);
 
   const keysRef = useInput(handleInteract, zoomIn, zoomOut, setPanel, setDialogue, dialogueRef, panelRef, handleMount);
-  useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue);
+  useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue, fishingRef, breakablesRef, gardenRef);
 
   // ── Keep zoom centered on the player ──
   useEffect(() => {
@@ -185,7 +266,7 @@ export default function GameCanvas() {
       {panel && <PortfolioPanel sectionId={panel} onClose={() => { setPanel(null); horseRef.current.waiting = false; }}/>}
       {isMobile && !dialogue && !panel && <MobileControls keysRef={keysRef} onAction={handleInteract}/>}
 
-      {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut}/>}
+      {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} questProgress={questProgress} fishCount={fishCount}/>}
       {!panel && !dialogue && <Minimap gameRef={gameRef} zoom={zoom}/>}
     </div>
   );

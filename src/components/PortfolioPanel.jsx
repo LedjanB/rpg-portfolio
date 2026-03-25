@@ -70,6 +70,41 @@ export default function PortfolioPanel({ sectionId, onClose }) {
             )}
           </div>
         </>}
+
+        {sectionId==="observatory" && <>
+          <p style={{ ...f1, fontSize:10, color:`${accent}CC`, marginBottom:16 }}>{section.subtitle}</p>
+          {section.achievements.map((a,i) =>
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:14, background:"rgba(0,0,0,0.3)", border:`1px solid ${accent}33`, borderRadius:8, padding:14, marginBottom:10 }}>
+              <div style={{ fontSize:28, width:40, textAlign:"center", flexShrink:0 }}>{a.icon}</div>
+              <div style={{ flex:1 }}>
+                <h3 style={{ ...f1, fontSize:10, color:accent, marginBottom:4 }}>{a.name}</h3>
+                <div style={{ ...f2, fontSize:17, color:C.gray4 }}>{a.org}</div>
+              </div>
+              <div style={{ ...f1, fontSize:7, color:C.gray2, flexShrink:0 }}>{a.year}</div>
+            </div>
+          )}
+        </>}
+
+        {sectionId==="gallery" && section.items.map((p,i) =>
+          <div key={i} style={{ background:"rgba(0,0,0,0.3)", border:`1px solid ${accent}33`, borderRadius:8, padding:16, marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}><h3 style={{ ...f1, fontSize:11, color:accent }}>{p.name}</h3><span style={{ ...f1, fontSize:7, color:C.gray1 }}>STAGE {p.stage}</span></div>
+            <p style={{ ...f2, fontSize:19, color:C.gray5, lineHeight:1.4, marginBottom:10 }}>{p.desc}</p>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{p.tech.map(t => <span key={t} style={{ ...f1, fontSize:7, color:"#000", background:accent, padding:"3px 7px", borderRadius:3 }}>{t}</span>)}</div>
+          </div>
+        )}
+
+        {sectionId==="arcade" && <>
+          <p style={{ ...f2, fontSize:22, color:C.uiText, marginBottom:20, lineHeight:1.4 }}>{section.text}</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            {section.interests.map(int =>
+              <div key={int.name} style={{ background:"rgba(0,0,0,0.3)", border:`1px solid ${accent}33`, borderRadius:8, padding:14 }}>
+                <div style={{ fontSize:24, marginBottom:8 }}>{int.icon}</div>
+                <div style={{ ...f1, fontSize:8, color:accent, marginBottom:6 }}>{int.name}</div>
+                <div style={{ ...f2, fontSize:17, color:C.gray4, lineHeight:1.3 }}>{int.desc}</div>
+              </div>
+            )}
+          </div>
+        </>}
       </div>
     </div>
   );

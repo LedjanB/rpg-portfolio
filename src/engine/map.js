@@ -3,7 +3,7 @@ import { NPCS } from "../config/npcs.js";
 import {
   WATER_ZONES, BRIDGE_POSITIONS, DOCK_POSITIONS, PROPS,
   EXTRA_TREES, FOREST_ZONES, COBBLE_ZONE, FOUNTAIN_POS,
-  ROAD_SEGMENTS,
+  ROAD_SEGMENTS, BREAKABLE_PROPS, GARDEN_PLOTS,
 } from "../config/world.js";
 import { COLS, ROWS } from "./constants.js";
 
@@ -39,6 +39,10 @@ export function buildMap() {
     if (!edge && Math.random() < 0.15) lilypads.push([wx,wy]);
   });
 
+  // Garden soil set
+  const gardenSoil = new Set();
+  GARDEN_PLOTS.forEach(p => gardenSoil.add(`${p.x},${p.y}`));
+
   // Blocked tile set (buildings, water, sand, dock) — used to filter trees
   const blocked = new Set();
   BUILDINGS.forEach(b => {
@@ -57,7 +61,7 @@ export function buildMap() {
   for (let y=ROWS-6; y<ROWS-2; y++) rawTrees.push([2,y],[3,y],[COLS-3,y],[COLS-4,y]);
   EXTRA_TREES.forEach(t => rawTrees.push(t));
   FOREST_ZONES.forEach(z => { for (let x=z.x; x<z.x+z.w; x++) for (let y=z.y; y<z.y+z.h; y++) rawTrees.push([x,y]); });
-  const trees = rawTrees.filter(([x,y]) => !blocked.has(`${x},${y}`) && x>=0 && x<COLS && y>=0 && y<ROWS);
+  const trees = rawTrees.filter(([x,y]) => !blocked.has(`${x},${y}`) && !gardenSoil.has(`${x},${y}`) && x>=0 && x<COLS && y>=0 && y<ROWS);
 
   // Paths
   const paths = new Set();
@@ -102,8 +106,9 @@ export function buildMap() {
   DOCK_POSITIONS.forEach(([x,y]) => { if (y<ROWS && x<COLS) col[y][x] = 0; });
   PROPS.forEach(p => { if (p.y<ROWS && p.x<COLS && p.type !== "signpost") col[p.y][p.x] = 1; });
   NPCS.forEach(n => { if (n.y<ROWS && n.x<COLS) col[n.y][n.x] = 1; });
+  // Note: BREAKABLE_PROPS collision is handled dynamically by breakableBlockers in collision.js
 
-  return { water, bridges, sand, reeds, lilypads, trees, paths, cobble, filteredFences, col };
+  return { water, bridges, sand, reeds, lilypads, trees, paths, cobble, filteredFences, gardenSoil, col };
 }
 
 export const MAP = buildMap();

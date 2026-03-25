@@ -54,4 +54,37 @@ export const PORTFOLIO_CONTENT = {
       { icon: "🐦", label: "TWITTER",  value: "@yourhandle" },
     ],
   },
+  // ── New buildings ──
+  observatory: {
+    theme: { accent: "#7B9FFF", bg: "#1a1a2eF0" },
+    title: "🔭 STAR MAP",
+    subtitle: "Achievements & Certifications",
+    achievements: [
+      { name: "AWS Solutions Architect", org: "Amazon Web Services", year: "2023", icon: "☁️" },
+      { name: "Google Cloud Professional", org: "Google", year: "2022", icon: "🌐" },
+      { name: "Hackathon Winner", org: "HackCity 2023", year: "2023", icon: "🏆" },
+      { name: "Open Source Contributor", org: "500+ contributions", year: "Ongoing", icon: "⭐" },
+      { name: "Tech Speaker", org: "ReactConf, NodeSummit", year: "2021–2023", icon: "🎤" },
+    ],
+  },
+  gallery: {
+    theme: { accent: "#FF8C6B", bg: "#2a1a1aF0" },
+    title: "🎨 ART GALLERY",
+    items: [
+      { name: "Brand Identity", desc: "Complete visual identity system for a tech startup.", tech: ["Figma","Illustrator","Motion"], stage: 1 },
+      { name: "Dashboard UI", desc: "Analytics dashboard with real-time data visualization.", tech: ["Figma","D3.js","React"], stage: 2 },
+      { name: "Mobile App Design", desc: "End-to-end UX design for a fitness tracking app.", tech: ["Sketch","Protopie","User Testing"], stage: 3 },
+    ],
+  },
+  arcade: {
+    theme: { accent: "#6BFFB8", bg: "#1a2a1aF0" },
+    title: "🕹️ GAME ROOM",
+    text: "When I'm not coding, you'll find me doing these things!",
+    interests: [
+      { icon: "🎮", name: "RETRO GAMING", desc: "NES, SNES, and indie pixel-art games" },
+      { icon: "🎵", name: "MUSIC PRODUCTION", desc: "Making chiptune and lo-fi beats" },
+      { icon: "📚", name: "SCI-FI BOOKS", desc: "Asimov, Philip K. Dick, and cyberpunk" },
+      { icon: "🏃", name: "TRAIL RUNNING", desc: "Getting outdoors and clearing my head" },
+    ],
+  },
 };

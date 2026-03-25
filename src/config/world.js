@@ -1,167 +1,246 @@
 // ─── WATER REGIONS ───────────────────────────────────────────────
+// Symmetric lakes — one on each side of the southern area
 export const WATER_ZONES = [
-  { x: 5,  y: 22, w: 5, h: 4 },   // Lake (main body)
-  { x: 6,  y: 21, w: 4, h: 1 },   // Lake (wider top — organic shape)
-  { x: 6,  y: 26, w: 3, h: 1 },   // Lake (extension south)
-  { x: 31, y: 4,  w: 2, h: 18 },  // River (north-south)
-  { x: 31, y: 14, w: 6, h: 2 },   // River (eastern branch)
+  // West lake
+  { x: 10, y: 23, w: 4, h: 3 },
+  { x: 11, y: 22, w: 3, h: 1 },
+  // East lake (mirror)
+  { x: 40, y: 23, w: 4, h: 3 },
+  { x: 40, y: 22, w: 3, h: 1 },
 ];
 
 // ─── BRIDGES ─────────────────────────────────────────────────────
-export const BRIDGE_POSITIONS = [
-  [31,9],[32,9],[31,10],[32,10],    // North bridge (main road)
-  [31,20],[32,20],[31,21],[32,21],  // South bridge (southern road)
-];
+export const BRIDGE_POSITIONS = [];
 
 // ─── DOCK ────────────────────────────────────────────────────────
-export const DOCK_POSITIONS = [[4,24],[4,25]];
+export const DOCK_POSITIONS = [
+  [9, 24], [9, 25],   // West dock
+  [44, 24], [44, 25], // East dock (mirror)
+];
+
+// ─── FISHING SPOTS ──────────────────────────────────────────────
+// Dock tiles where the player can fish
+export const FISHING_SPOTS = [
+  { x: 9, y: 24 }, { x: 9, y: 25 },
+  { x: 44, y: 24 }, { x: 44, y: 25 },
+];
 
 // ─── COINS ───────────────────────────────────────────────────────
 export const COIN_POSITIONS = [
-  [4,8],[39,8],[5,21],[39,25],[14,14],
-  [30,7],[21,16],[37,14],[10,27],[28,27],
+  [11, 8],  [42, 8],   // Near Tavern / Library
+  [11, 20], [42, 20],  // Near Forge / Post Office
+  [19, 14], [34, 14],  // In the groves
+  [15, 26], [38, 26],  // Southern exploration path
+  [26, 6],  [27, 36],  // Center top / center south
+  [15, 33], [38, 33],  // Near Gallery / Arcade
 ];
 
 // ─── INTERACTIVE SIGNS ──────────────────────────────────────────
-// Readable signposts — press SPACE near them to read.
-// Must have a matching signpost prop at the same position.
 export const SIGNS = [
-  { x: 18, y: 9,  text: "Welcome to Portfolio\nVillage! Explore buildings\nto discover my work!" },
-  { x: 8,  y: 9,  text: "← TAVERN\nCome in for stories\nabout the developer!" },
-  { x: 30, y: 9,  text: "LIBRARY →\nDiscover projects and\ntechnical work inside!" },
-  { x: 4,  y: 21, text: "CRYSTAL LAKE\nA peaceful spot to\nthink about code." },
-  { x: 8,  y: 20, text: "← FORGE\nSkills crafted with\nprecision and care." },
-  { x: 30, y: 20, text: "POST OFFICE →\nReach out and get\nin touch anytime!" },
+  { x: 26, y: 7,  text: "Welcome to Portfolio\nVillage! Explore buildings\nto discover my work!" },
+  { x: 15, y: 9,  text: "\u2190 TAVERN\nCome in for stories\nabout the developer!" },
+  { x: 38, y: 9,  text: "LIBRARY \u2192\nDiscover projects and\ntechnical work inside!" },
+  { x: 15, y: 20, text: "\u2190 FORGE\nSkills crafted with\nprecision and care." },
+  { x: 38, y: 20, text: "POST OFFICE \u2192\nReach out and get\nin touch anytime!" },
+  { x: 12, y: 24, text: "CRYSTAL LAKE\nA peaceful spot to\nthink about code." },
+  { x: 41, y: 24, text: "MOONLIGHT POND\nWhere ideas flow\nlike water." },
+  // New south quarter
+  { x: 26, y: 27, text: "SOUTH QUARTER\nExplore the Observatory,\nGallery, and Arcade!" },
+  { x: 15, y: 32, text: "\u2190 GALLERY\nDiscover designs and\ncreative work inside!" },
+  { x: 38, y: 32, text: "ARCADE \u2192\nPlay mini-games or\ndiscover fun projects!" },
+];
+
+// ─── BREAKABLE PROPS ────────────────────────────────────────────
+// Crates and pots that break when interacted with. Respawn after a delay.
+export const BREAKABLE_PROPS = [
+  // Near Gallery (left)
+  { type: "pot", x: 8, y: 31 }, { type: "crate", x: 14, y: 31 },
+  // Near Arcade (right, mirror)
+  { type: "pot", x: 45, y: 31 }, { type: "crate", x: 39, y: 31 },
+  // Southern path
+  { type: "pot", x: 19, y: 27 }, { type: "pot", x: 34, y: 27 },
+  // Near Observatory
+  { type: "crate", x: 22, y: 34 }, { type: "crate", x: 31, y: 34 },
+];
+
+// ─── GARDEN PLOTS ───────────────────────────────────────────────
+// Plantable garden tiles near the Observatory
+export const GARDEN_PLOTS = [
+  { x: 24, y: 35 }, { x: 25, y: 35 }, { x: 26, y: 35 },
+  { x: 27, y: 35 }, { x: 28, y: 35 }, { x: 29, y: 35 },
+  { x: 24, y: 36 }, { x: 25, y: 36 }, { x: 26, y: 36 },
+  { x: 27, y: 36 }, { x: 28, y: 36 }, { x: 29, y: 36 },
 ];
 
 // ─── PROPS ───────────────────────────────────────────────────────
 export const PROPS = [
-  // TAVERN area
-  { type: "barrel", x: 3,  y: 7 },  { type: "barrel", x: 9,  y: 6 },
-  { type: "crate",  x: 9,  y: 7 },  { type: "bench",  x: 11, y: 8 },
-  // LIBRARY area
-  { type: "bench",  x: 32, y: 8 },  { type: "barrel", x: 38, y: 6 },
-  { type: "crate",  x: 38, y: 7 },
-  // TOWN HALL area
-  { type: "well",   x: 19, y: 8 },  { type: "bench",  x: 25, y: 8 },
-  // Town square — market
-  { type: "stall",  x: 19, y: 13 }, { type: "stall",  x: 23, y: 13 },
-  { type: "bench",  x: 15, y: 10 }, { type: "bench",  x: 29, y: 10 },
-  // FORGE area
-  { type: "barrel", x: 3,  y: 19 }, { type: "crate",  x: 3,  y: 18 },
-  { type: "barrel", x: 10, y: 18 }, { type: "haystack",x: 11, y: 17 },
-  // POST OFFICE area
-  { type: "crate",  x: 38, y: 18 }, { type: "barrel", x: 38, y: 19 },
-  { type: "bench",  x: 32, y: 20 },
-  // Lakeside
-  { type: "bench",  x: 3,  y: 22 },
-  // Signposts (interactive — matched by SIGNS array above)
-  { type: "signpost", x: 18, y: 9 },  { type: "signpost", x: 8,  y: 9 },
-  { type: "signpost", x: 30, y: 9 },  { type: "signpost", x: 4,  y: 21 },
-  { type: "signpost", x: 8,  y: 20 }, { type: "signpost", x: 30, y: 20 },
-  // Extra along roads
-  { type: "bench",  x: 14, y: 10 }, { type: "bench",  x: 30, y: 10 },
-  { type: "haystack",x: 14, y: 20 }, { type: "crate",  x: 29, y: 20 },
+  // Tavern area (left)
+  { type: "barrel", x: 8,  y: 7 },  { type: "barrel", x: 14, y: 6 },
+  { type: "crate",  x: 14, y: 7 },  { type: "bench",  x: 16, y: 8 },
+  // Library area (right, mirror)
+  { type: "barrel", x: 45, y: 7 },  { type: "barrel", x: 39, y: 6 },
+  { type: "crate",  x: 39, y: 7 },  { type: "bench",  x: 37, y: 8 },
+  // Town Hall area (symmetric)
+  { type: "well",   x: 24, y: 7 },  { type: "well",   x: 29, y: 7 },
+  // Town square market (symmetric)
+  { type: "stall",  x: 24, y: 13 }, { type: "stall",  x: 29, y: 13 },
+  { type: "bench",  x: 22, y: 10 }, { type: "bench",  x: 31, y: 10 },
+  // Forge area (left)
+  { type: "barrel", x: 8,  y: 19 }, { type: "crate",  x: 8,  y: 18 },
+  { type: "barrel", x: 15, y: 18 }, { type: "haystack", x: 16, y: 17 },
+  // Post Office area (right, mirror)
+  { type: "barrel", x: 45, y: 19 }, { type: "crate",  x: 45, y: 18 },
+  { type: "barrel", x: 38, y: 18 }, { type: "haystack", x: 37, y: 17 },
+  // Lakeside (symmetric)
+  { type: "bench",  x: 8,  y: 22 }, { type: "bench",  x: 45, y: 22 },
+  // Signposts
+  { type: "signpost", x: 26, y: 7 },
+  { type: "signpost", x: 15, y: 9 },  { type: "signpost", x: 38, y: 9 },
+  { type: "signpost", x: 15, y: 20 }, { type: "signpost", x: 38, y: 20 },
+  { type: "signpost", x: 12, y: 24 }, { type: "signpost", x: 41, y: 24 },
+  { type: "signpost", x: 26, y: 27 },
+  { type: "signpost", x: 15, y: 32 }, { type: "signpost", x: 38, y: 32 },
+  // Road decorations (symmetric)
+  { type: "bench",    x: 19, y: 10 }, { type: "bench",    x: 34, y: 10 },
+  { type: "haystack", x: 19, y: 20 }, { type: "haystack", x: 34, y: 20 },
+  // Southern area — Gallery props
+  { type: "barrel", x: 8,  y: 31 }, { type: "bench", x: 16, y: 32 },
+  // Southern area — Arcade props (mirror)
+  { type: "barrel", x: 45, y: 31 }, { type: "bench", x: 37, y: 32 },
+  // Observatory area
+  { type: "bench",  x: 22, y: 33 }, { type: "bench", x: 31, y: 33 },
 ];
 
 // ─── FLOWERS ─────────────────────────────────────────────────────
 // [x, y, colorIndex] — 0=pink, 1=yellow, 2=blue, 3=purple
 export const FLOWER_POSITIONS = [
-  // TAVERN garden
-  [5,9,0],[8,4,1],[9,4,2],[5,4,3],
-  // LIBRARY garden
-  [34,9,1],[37,9,2],[34,4,3],[38,4,0],
-  // Town square gardens
-  [18,11,0],[19,14,1],[23,11,2],[24,14,3],[18,14,0],[25,11,3],
-  [20,15,1],[23,15,2],
-  // Lake shore
-  [3,21,2],[3,26,0],[10,22,3],[10,25,1],
-  // FORGE area
-  [5,20,1],[9,20,2],[3,17,3],
-  // POST OFFICE area
-  [34,20,0],[38,20,1],[39,17,2],
-  // Roads & paths
-  [14,9,0],[29,9,2],[14,20,1],[29,20,3],
-  // Southern meadow
-  [14,25,0],[16,26,1],[27,25,2],[29,26,3],
+  // Tavern garden (left)
+  [10, 9, 0], [13, 4, 1], [14, 4, 2], [10, 4, 3],
+  // Library garden (right, mirror)
+  [43, 9, 0], [40, 4, 1], [39, 4, 2], [43, 4, 3],
+  // Town square (symmetric)
+  [23, 11, 0], [24, 14, 1], [30, 11, 0], [29, 14, 1],
+  [23, 14, 2], [30, 14, 2], [25, 15, 3], [28, 15, 3],
+  // West lake shore
+  [8, 22, 2], [8, 26, 0], [15, 22, 3], [15, 25, 1],
+  // East lake shore (mirror)
+  [45, 22, 2], [45, 26, 0], [38, 22, 3], [38, 25, 1],
+  // Forge area (left)
+  [10, 20, 1], [14, 20, 2], [8, 17, 3],
+  // Post Office area (right, mirror)
+  [43, 20, 1], [39, 20, 2], [45, 17, 3],
+  // Roads (symmetric)
+  [19, 9, 0], [34, 9, 2], [19, 20, 1], [34, 20, 3],
+  // Southern meadow (symmetric)
+  [19, 25, 0], [21, 26, 1], [32, 25, 2], [34, 26, 3],
+  // New south area
+  [10, 32, 0], [14, 32, 1], [43, 32, 0], [39, 32, 1],
+  [24, 37, 2], [29, 37, 3], [25, 37, 0], [28, 37, 1],
 ];
 
 // ─── LAMP POSTS ─────────────────────────────────────────────────
-// Positioned along road edges for natural street lighting.
 export const LAMPPOST_POSITIONS = [
-  // Northern road — evenly spaced along the top path
-  [3,8],[10,8],[16,8],[27,8],[33,8],[40,8],
-  // Southern road — matching spacing along the bottom path
-  [3,19],[10,19],[16,19],[27,19],[33,19],[40,19],
-  // Main vertical road — lining the north-south corridor
-  [20,6],[23,6],[20,16],[23,16],
-  // Bridge lanterns — one on each side of both bridges
-  [30,8],[33,8],[30,21],[33,21],
-  // Town square corners — framing the cobblestone plaza
-  [17,10],[26,10],[17,15],[26,15],
-  // Building entrances — welcoming lights at each door
-  [5,8],[8,8],     // Tavern entrance
-  [34,8],[37,8],   // Library entrance
-  [5,20],[8,20],   // Forge entrance
-  [34,20],[37,20], // Post Office entrance
+  // Northern road (symmetric)
+  [8, 8],  [45, 8],
+  [15, 8], [38, 8],
+  [21, 8], [32, 8],
+  // Southern road (symmetric)
+  [8, 19], [45, 19],
+  [15, 19], [38, 19],
+  [21, 19], [32, 19],
+  // Main vertical road
+  [25, 6], [28, 6],
+  [25, 16], [28, 16],
+  [25, 28], [28, 28],
+  // Town square corners
+  [22, 10], [31, 10],
+  [22, 15], [31, 15],
+  // Building entrances (symmetric)
+  [10, 8],  [13, 8],   // Tavern
+  [40, 8],  [43, 8],   // Library (mirror)
+  [10, 20], [13, 20],  // Forge
+  [40, 20], [43, 20],  // Post Office (mirror)
   // Southern exploration path
-  [14,26],[21,26],[28,26],[36,26],
+  [19, 26], [34, 26], [26, 26],
+  // New south buildings
+  [10, 32], [13, 32],  // Gallery
+  [40, 32], [43, 32],  // Arcade (mirror)
+  [25, 33], [28, 33],  // Observatory
+  // New south road
+  [8, 32], [45, 32],
+  [19, 34], [34, 34],
 ];
 
 // ─── EXTRA TREE CLUSTERS ─────────────────────────────────────────
 export const EXTRA_TREES = [
-  // Near TAVERN
-  [11,4],[12,4],[11,5],[12,5],[14,4],[15,4],[14,5],[15,5],
-  // Near LIBRARY
-  [28,4],[29,4],[28,5],[29,5],
-  // Road edges — visual boundaries
-  [13,11],[13,12],[30,11],[30,12],
-  [13,17],[13,18],[30,17],[30,18],
-  // Near lake
-  [10,23],[10,24],[11,22],[11,23],
-  // Center path
-  [19,16],[19,17],[24,16],[24,17],
+  // Near Tavern (left)
+  [16, 4], [17, 4], [16, 5], [17, 5], [19, 4], [20, 4], [19, 5], [20, 5],
+  // Near Library (right, mirror)
+  [37, 4], [36, 4], [37, 5], [36, 5], [34, 4], [33, 4], [34, 5], [33, 5],
+  // Road edges (symmetric)
+  [18, 11], [18, 12], [35, 11], [35, 12],
+  [18, 17], [18, 18], [35, 17], [35, 18],
+  // Near west lake
+  [15, 23], [15, 24], [16, 22], [16, 23],
+  // Near east lake (mirror)
+  [38, 23], [38, 24], [37, 22], [37, 23],
+  // Center decorations (symmetric)
+  [24, 16], [24, 17], [29, 16], [29, 17],
+  // New south area tree borders
+  [18, 28], [18, 29], [35, 28], [35, 29],
+  [18, 35], [18, 36], [35, 35], [35, 36],
 ];
 
 // ─── FOREST PATCHES ──────────────────────────────────────────────
 export const FOREST_ZONES = [
-  { x: 14, y: 15, w: 3, h: 3 },   // West-central grove
-  { x: 26, y: 15, w: 3, h: 3 },   // East-central grove
-  { x: 13, y: 24, w: 3, h: 3 },   // Southwest woods
-  { x: 27, y: 24, w: 3, h: 3 },   // Southeast woods
+  { x: 19, y: 15, w: 3, h: 3 },  // West-central grove
+  { x: 32, y: 15, w: 3, h: 3 },  // East-central grove (mirror)
+  { x: 18, y: 24, w: 3, h: 3 },  // Southwest woods
+  { x: 33, y: 24, w: 3, h: 3 },  // Southeast woods (mirror)
+  // New south forests
+  { x: 5,  y: 34, w: 3, h: 3 },  // Far southwest
+  { x: 46, y: 34, w: 3, h: 3 },  // Far southeast (mirror)
 ];
 
 // ─── COBBLESTONE ZONE (town square) ──────────────────────────────
-export const COBBLE_ZONE = { x: 17, y: 11, w: 10, h: 4 };
+export const COBBLE_ZONE = { x: 22, y: 11, w: 10, h: 4 };
 
 // ─── FOUNTAIN ────────────────────────────────────────────────────
-export const FOUNTAIN_POS = { x: 21, y: 12 };
+export const FOUNTAIN_POS = { x: 26, y: 12 };
 
 // ─── EASTER EGG (appears after all coins collected) ──────────────
-export const EASTER_EGG_POS = { x: 21, y: 13 };
+export const EASTER_EGG_POS = { x: 27, y: 13 };
 
 // ─── PATH DEFINITIONS ────────────────────────────────────────────
 export const ROAD_SEGMENTS = [
   // Main horizontal roads
-  { axis: "h", fixed: 9,  from: 3, to: 41 },
-  { axis: "h", fixed: 10, from: 3, to: 41 },
-  { axis: "h", fixed: 20, from: 3, to: 41 },
-  { axis: "h", fixed: 21, from: 3, to: 41 },
-  // Main vertical road
-  { axis: "v", fixed: 21, from: 6, to: 29 },
-  { axis: "v", fixed: 22, from: 6, to: 29 },
-  // TAVERN connection
-  { axis: "v", fixed: 6,  from: 8,  to: 9 }, { axis: "v", fixed: 7,  from: 8,  to: 9 },
-  // LIBRARY connection
-  { axis: "v", fixed: 35, from: 8,  to: 9 }, { axis: "v", fixed: 36, from: 8,  to: 9 },
-  // Bridge approaches
-  { axis: "v", fixed: 30, from: 9,  to: 12 }, { axis: "v", fixed: 33, from: 9,  to: 12 },
-  { axis: "v", fixed: 30, from: 19, to: 21 }, { axis: "v", fixed: 33, from: 19, to: 21 },
-  // Lakeside path
-  { axis: "h", fixed: 21, from: 3,  to: 6 },
-  // Garden cross-path
-  { axis: "h", fixed: 16, from: 18, to: 24 },
+  { axis: "h", fixed: 9,  from: 3, to: 50 },
+  { axis: "h", fixed: 10, from: 3, to: 50 },
+  { axis: "h", fixed: 20, from: 3, to: 50 },
+  { axis: "h", fixed: 21, from: 3, to: 50 },
+  // New south horizontal road
+  { axis: "h", fixed: 32, from: 3, to: 50 },
+  { axis: "h", fixed: 33, from: 3, to: 50 },
+  // Main vertical road (center — extended south)
+  { axis: "v", fixed: 26, from: 6, to: 37 },
+  { axis: "v", fixed: 27, from: 6, to: 37 },
+  // Tavern connection (left)
+  { axis: "v", fixed: 11, from: 8, to: 9 },
+  { axis: "v", fixed: 12, from: 8, to: 9 },
+  // Library connection (right, mirror)
+  { axis: "v", fixed: 42, from: 8, to: 9 },
+  { axis: "v", fixed: 41, from: 8, to: 9 },
+  // Left side road (connects Forge to Gallery)
+  { axis: "v", fixed: 11, from: 20, to: 32 },
+  { axis: "v", fixed: 12, from: 20, to: 32 },
+  // Right side road (connects Post Office to Arcade, mirror)
+  { axis: "v", fixed: 42, from: 20, to: 32 },
+  { axis: "v", fixed: 41, from: 20, to: 32 },
+  // Garden cross-path (centered)
+  { axis: "h", fixed: 16, from: 23, to: 30 },
   // Southern exploration path
-  { axis: "h", fixed: 26, from: 5,  to: 39 },
-  { axis: "h", fixed: 27, from: 5,  to: 39 },
+  { axis: "h", fixed: 26, from: 10, to: 43 },
+  { axis: "h", fixed: 27, from: 10, to: 43 },
+  // Garden path
+  { axis: "h", fixed: 37, from: 23, to: 30 },
 ];

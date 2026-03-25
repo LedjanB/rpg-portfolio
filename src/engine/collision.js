@@ -1,12 +1,14 @@
 import { T, COLS, ROWS } from "./constants.js";
 import { MAP } from "./map.js";
+import { breakableBlockers } from "./breakables.js";
 
 // ─── COLLISION UTILITIES ─────────────────────────────────────────
 
 export function isBlocked(x, y) {
   const c = Math.floor(x / T), r = Math.floor(y / T);
   if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return true;
-  return MAP.col[r][c] !== 0;
+  if (MAP.col[r][c] !== 0) return true;
+  return breakableBlockers.has(`${c},${r}`);
 }
 
 export function moveWithCollision(px, py, dx, dy, pad = 6) {

@@ -16,6 +16,8 @@ export function ground(ctx, cx, cy, tick) {
         ctx.fillStyle="#5a3218";ctx.fillRect(px+6,py,2,T);ctx.fillRect(px+14,py,2,T);ctx.fillRect(px+22,py,2,T);
       } else if (MAP.sand.has(k) && !MAP.paths.has(k)) {
         ctx.fillStyle=C.sand1;ctx.fillRect(px,py,T,T);ctx.fillStyle=C.sand2;ctx.fillRect(px+((c*5+3)%24)+4,py+((r*7+5)%24)+4,3,2);
+      } else if (MAP.gardenSoil.has(k)) {
+        ctx.fillStyle="#5a4020";ctx.fillRect(px,py,T,T);ctx.fillStyle="#4a3418";ctx.fillRect(px+4,py+6,24,2);ctx.fillRect(px+4,py+14,24,2);ctx.fillRect(px+4,py+22,24,2);
       } else if (MAP.cobble.has(k)) {
         ctx.fillStyle=C.cobble1;ctx.fillRect(px,py,T,T);ctx.fillStyle=C.cobble2;
         for(let i=0;i<3;i++){ctx.fillRect(px+((c*11+i*13)%26)+2,py+((r*7+i*19)%26)+2,6,4);}
