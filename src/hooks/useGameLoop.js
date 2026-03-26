@@ -236,10 +236,10 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         smoothCamY += (targetCamY - smoothCamY) * 0.08;
       }
 
-      // Screen shake offset
+      // Snap camera to integer pixels to prevent sub-pixel tile seam jitter
       const shake = getScreenShake();
-      const camX = smoothCamX + shake.x;
-      const camY = smoothCamY + shake.y;
+      const camX = Math.round(smoothCamX + shake.x);
+      const camY = Math.round(smoothCamY + shake.y);
 
       // Expose screen shake trigger and break effects for interaction handler
       g._triggerShake = triggerScreenShake;

@@ -92,12 +92,13 @@ export default function GameCanvas() {
 
   const [autoScale, setAutoScale] = useState(1);
 
-  // Compute auto-scale to fill viewport
+  // Compute auto-scale to completely fill viewport — no black bars ever
   useEffect(() => {
     const update = () => {
       const scaleX = window.innerWidth / CW;
       const scaleY = window.innerHeight / CH;
-      setAutoScale(Math.max(scaleX, scaleY));
+      // Use max to cover the entire viewport, plus tiny buffer to prevent sub-pixel gaps
+      setAutoScale(Math.max(scaleX, scaleY) + 0.01);
     };
     update();
     window.addEventListener("resize", update);
@@ -336,8 +337,8 @@ export default function GameCanvas() {
     <div style={{ width:"100%", height:"100vh", background:C.pageBg, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
       <style>{KEYFRAMES}</style>
 
-      {/* Canvas — auto-scales to fill viewport, then user zoom on top */}
-      <div ref={zoomWrapperRef} style={{ position:"relative", transform:`scale(${autoScale * zoom})`, transition:"transform 0.2s ease-out", zIndex:1 }}>
+      {/* Canvas — auto-scales to completely fill viewport, no black frame */}
+      <div ref={zoomWrapperRef} style={{ position:"absolute", left:"50%", top:"50%", transform:`translate(-50%,-50%) scale(${autoScale * zoom})`, zIndex:1 }}>
         <canvas ref={canvasRef} width={CW} height={CH} role="img" aria-label="RPG Portfolio game — use arrow keys or WASD to move, Space to interact" style={{ width:CW, height:CH, imageRendering:"pixelated", display:"block" }}/>
       </div>
 
