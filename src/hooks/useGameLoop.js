@@ -10,7 +10,7 @@ import { createCat, updateCat } from "../engine/cat.js";
 import { updateHorse } from "../engine/horse.js";
 import { HORSE } from "../config/npcs.js";
 import { createClouds } from "../engine/clouds.js";
-import { sfx, playRainAmbient } from "../engine/sound.js";
+import { sfx, playRainAmbient, setAmbientNight } from "../engine/sound.js";
 import { moveWithCollision } from "../engine/collision.js";
 import { findNearDoor, findNearNPC, isNearCat, isNearHorse, findNearSign } from "../engine/proximity.js";
 import { findNearFishingSpot, updateFishing } from "../engine/fishing.js";
@@ -19,11 +19,11 @@ import { updateGarden, findNearPlot } from "../engine/garden.js";
 import { onRapidKeys, onStep, onCoinCollect } from "../engine/easterEggs.js";
 import { Render } from "../render/index.js";
 // New systems
-import { getNightAmount, updateFireflies, drawFireflies, drawStars, drawDayNightOverlay, drawBuildingGlow } from "../engine/daynight.js";
+import { getNightAmount, updateFireflies, drawFireflies, drawStars, drawDayNightOverlay, drawBuildingGlow, triggerLightning, drawLightningFlash, getShadowAngle } from "../engine/daynight.js";
 import { createWeatherState, updateWeather, drawRain, getWindMultiplier } from "../engine/weather.js";
 import { updateButterflies, drawButterflies, updateBirds, drawBirds, updatePollen, drawPollen } from "../engine/wildlife.js";
 import { updateNPCs, getBreathingOffset, getEmoteState } from "../engine/npcBehavior.js";
-import { grassTufts, waterShimmer, emoteBubble, getScreenShake, triggerScreenShake, addFootprint, updateFootprints, drawFootprints, doorTooltip, getSeasonalFlowerColors } from "../render/atmosphere.js";
+import { grassTufts, waterShimmer, emoteBubble, getScreenShake, triggerScreenShake, addFootprint, updateFootprints, drawFootprints, doorTooltip, getSeasonalFlowerColors, updateTransition, drawTransition, updateIdleState, getIdleState, getIdleTimer, waterReflections, getTerrainParticle, updateToasts, drawToasts } from "../render/atmosphere.js";
 
 export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue, fishingRef, breakablesRef, gardenRef) {
   useEffect(() => {
@@ -104,13 +104,15 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
             horse.frame = g.frame;
           }
 
-          // Dust particles on paths
+          // Terrain-specific particles
           const pc = Math.floor((g.px+16)/T), pr = Math.floor((g.py+24)/T);
           const onPath = MAP.paths.has(`${pc},${pr}`);
           const onCobble = MAP.cobble.has(`${pc},${pr}`);
 
-          if (onPath && g.tick%4===0)
-            particles.add(g.px+12+Math.random()*8, g.py+28, Math.random()*0.6-0.3, -0.3-Math.random()*0.3, 15+Math.random()*10, "rgba(180,160,120,0.6)", 2);
+          if (g.tick % 4 === 0) {
+            const tp = getTerrainParticle(g.px, g.py);
+            particles.add(g.px+12+Math.random()*8, g.py+28, Math.random()*0.6-0.3, tp.vy-Math.random()*0.3, tp.life, tp.color, tp.size);
+          }
 
           // Sprint dust trail
           if (sprinting && g.tick % 3 === 0) {
@@ -191,14 +193,26 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       updatePollen(g.tick, windMul >= 1 ? 1 : -1);
       updateNPCs(NPCS, g.px, g.py, g.tick);
 
+      // Update idle state, transitions, toasts
+      updateIdleState(g.moving);
+      updateTransition();
+      updateToasts();
+
+      // Night ambient sounds (crickets vs birds)
+      setAmbientNight(nightAmount > 0.5);
+
       // Rain ambient sound
       if (weather.raining && g.tick % 6 === 0) {
         playRainAmbient(weather.rainIntensity);
       }
-      // Thunder during rain
+      // Thunder + lightning during rain
       if (weather.raining && weather.rainIntensity > 0.7 && Math.random() < 0.001) {
         sfx.thunder();
+        triggerLightning();
       }
+
+      // Get shadow info for this frame
+      const shadow = getShadowAngle(g.tick);
 
       // Break effect particles cleanup
       for (let i = breakEffects.length - 1; i >= 0; i--) {
@@ -258,6 +272,7 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
 
       Render.ground(ctx, camX, camY, g.tick);
       waterShimmer(ctx, camX, camY, g.tick);
+      waterReflections(ctx, camX, camY, g.tick);
       grassTufts(ctx, camX, camY, g.tick, windMul);
       drawFootprints(ctx, camX, camY);
       Render.clouds(ctx, cloudList, camX, windMul);
@@ -361,8 +376,17 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       // Day/night tint overlay (on top of everything)
       drawDayNightOverlay(ctx, CW, CH, g.tick);
 
+      // Lightning flash (during storms)
+      drawLightningFlash(ctx, CW, CH);
+
       // Scanlines
       if (scanlinePattern) { ctx.fillStyle = scanlinePattern; ctx.fillRect(0, 0, CW, CH); }
+
+      // Achievement toasts (on top of scanlines)
+      drawToasts(ctx, CW);
+
+      // Screen transition overlay (topmost)
+      drawTransition(ctx, CW, CH);
 
       raf = requestAnimationFrame(loop);
     };

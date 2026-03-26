@@ -144,12 +144,62 @@ export function drawFireflies(ctx, camX, camY, tick) {
   ctx.globalAlpha = 1;
 }
 
-// ─── DAY/NIGHT OVERLAY ──────────────────────────────────────────
+// ─── DAY/NIGHT OVERLAY WITH VIGNETTE ────────────────────────────
 export function drawDayNightOverlay(ctx, cw, ch, tick) {
   const [r, g, b, a] = getTint(tick);
-  if (a < 0.01) return;
-  ctx.fillStyle = `rgba(${r|0},${g|0},${b|0},${a.toFixed(3)})`;
-  ctx.fillRect(0, 0, cw, ch);
+  const nightAmt = getNightAmount(tick);
+
+  if (a >= 0.01) {
+    ctx.fillStyle = `rgba(${r|0},${g|0},${b|0},${a.toFixed(3)})`;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+
+  // Vignette — darkened edges, stronger at night
+  const vignetteAlpha = 0.15 + nightAmt * 0.35;
+  if (vignetteAlpha > 0.01) {
+    const cx = cw / 2, cy = ch / 2;
+    const outerR = Math.sqrt(cx * cx + cy * cy);
+    const grd = ctx.createRadialGradient(cx, cy, outerR * 0.4, cx, cy, outerR);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(0.7, `rgba(0,0,0,${vignetteAlpha * 0.3})`);
+    grd.addColorStop(1, `rgba(0,0,0,${vignetteAlpha})`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+}
+
+// ─── LIGHTNING FLASH ────────────────────────────────────────────
+let _lightningTimer = 0;
+let _lightningIntensity = 0;
+
+export function triggerLightning() {
+  _lightningTimer = 12;
+  _lightningIntensity = 0.6 + Math.random() * 0.3;
+}
+
+export function drawLightningFlash(ctx, cw, ch) {
+  if (_lightningTimer <= 0) return;
+  _lightningTimer--;
+  // Double flash pattern
+  const flash = _lightningTimer > 8 ? _lightningIntensity :
+                _lightningTimer > 5 ? 0 :
+                _lightningTimer > 3 ? _lightningIntensity * 0.5 : 0;
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(200,210,255,${flash})`;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+}
+
+// ─── DYNAMIC SHADOWS ────────────────────────────────────────────
+export function getShadowAngle(tick) {
+  const { phase, progress } = getDayPhase(tick);
+  // Shadow direction rotates through the day
+  if (phase === "night" || phase === "predawn") return { dx: 0, dy: 0, alpha: 0 };
+  if (phase === "dawn") return { dx: -8 + progress * 4, dy: 6 - progress * 2, alpha: 0.1 + progress * 0.1 };
+  if (phase === "day") return { dx: -4 + progress * 8, dy: 4, alpha: 0.2 };
+  if (phase === "sunset") return { dx: 4 + progress * 4, dy: 4 + progress * 2, alpha: 0.2 - progress * 0.1 };
+  if (phase === "dusk") return { dx: 8, dy: 6, alpha: 0.1 - progress * 0.1 };
+  return { dx: 0, dy: 0, alpha: 0 };
 }
 
 // ─── BUILDING WINDOW GLOW AT NIGHT ─────────────────────────────

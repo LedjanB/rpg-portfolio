@@ -204,24 +204,139 @@ export function drawFootprints(ctx, camX, camY) {
   ctx.globalAlpha = 1;
 }
 
-// ─── PARALLAX MOUNTAIN BACKGROUND ───────────────────────────────
-export function parallaxBg(ctx, camX, camY, cw, ch) {
-  const parallaxX = camX * 0.15;
-  ctx.fillStyle = "#1a2a1a";
+// ─── SCREEN TRANSITION (fade to/from black) ────────────────────
+let _transitionAlpha = 0;
+let _transitionDir = 0; // 1 = fading out, -1 = fading in, 0 = none
+let _transitionCallback = null;
 
-  // Distant mountain silhouettes
-  ctx.beginPath();
-  ctx.moveTo(-parallaxX, ch);
-  const peaks = [
-    [0, 0.7], [60, 0.4], [120, 0.6], [200, 0.3], [280, 0.55],
-    [360, 0.35], [440, 0.5], [520, 0.38], [600, 0.6], [680, 0.45], [740, 0.65],
-  ];
-  for (const [x, h] of peaks) {
-    ctx.lineTo(x - parallaxX % 200, ch - ch * h * 0.15);
+export function startTransition(direction, callback) {
+  _transitionDir = direction; // 1 = fade to black, -1 = fade from black
+  if (direction === 1) _transitionAlpha = 0;
+  else _transitionAlpha = 1;
+  _transitionCallback = callback || null;
+}
+
+export function updateTransition() {
+  if (_transitionDir === 0) return false;
+  _transitionAlpha += _transitionDir * 0.06;
+  if (_transitionDir === 1 && _transitionAlpha >= 1) {
+    _transitionAlpha = 1;
+    _transitionDir = 0;
+    if (_transitionCallback) { _transitionCallback(); _transitionCallback = null; }
+    return true;
   }
-  ctx.lineTo(740 - parallaxX, ch);
-  ctx.closePath();
-  ctx.globalAlpha = 0.15;
-  ctx.fill();
+  if (_transitionDir === -1 && _transitionAlpha <= 0) {
+    _transitionAlpha = 0;
+    _transitionDir = 0;
+    return true;
+  }
+  return false;
+}
+
+export function drawTransition(ctx, cw, ch) {
+  if (_transitionAlpha <= 0) return;
+  ctx.fillStyle = `rgba(0,0,0,${_transitionAlpha})`;
+  ctx.fillRect(0, 0, cw, ch);
+}
+
+export function isTransitioning() { return _transitionDir !== 0; }
+
+// ─── PLAYER IDLE ANIMATIONS ────────────────────────────────────
+let _idleTimer = 0;
+let _idleState = "none"; // none, looking, sitting, sleeping
+
+export function updateIdleState(moving) {
+  if (moving) {
+    _idleTimer = 0;
+    _idleState = "none";
+    return;
+  }
+  _idleTimer++;
+  if (_idleTimer > 60 * 15 && _idleState === "sitting") _idleState = "sleeping";
+  else if (_idleTimer > 60 * 8 && _idleState !== "sleeping") _idleState = "sitting";
+  else if (_idleTimer > 60 * 3) _idleState = "looking";
+}
+
+export function getIdleState() { return _idleState; }
+export function getIdleTimer() { return _idleTimer; }
+
+// ─── WATER REFLECTIONS ─────────────────────────────────────────
+export function waterReflections(ctx, camX, camY, tick, trees, buildings) {
+  const sc = Math.max(0, Math.floor(camX / T));
+  const sr = Math.max(0, Math.floor(camY / T));
+  const ec = Math.min(sc + WORLD.viewportW + 2, WORLD.cols);
+  const er = Math.min(sr + WORLD.viewportH + 2, WORLD.rows);
+
+  for (let r = sr; r < er; r++) {
+    for (let c = sc; c < ec; c++) {
+      if (!MAP.water.has(`${c},${r}`)) continue;
+      // Check if tile above is land (shore reflection)
+      if (r > 0 && !MAP.water.has(`${c},${r-1}`)) {
+        const px = c * T - camX;
+        const py = r * T - camY;
+        const wave = Math.sin(tick * 0.04 + c * 2) * 2;
+        ctx.globalAlpha = 0.15;
+        // Reflect the ground color above as a wavy stripe
+        ctx.fillStyle = MAP.paths.has(`${c},${r-1}`) ? "#8a7a50" :
+                       MAP.cobble.has(`${c},${r-1}`) ? "#6a6a60" : "#3a5a2a";
+        ctx.fillRect(px, py + wave, T, 6);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ─── TERRAIN PARTICLES ─────────────────────────────────────────
+export function getTerrainParticle(px, py) {
+  const col = Math.floor((px + 16) / T);
+  const row = Math.floor((py + 24) / T);
+  const key = `${col},${row}`;
+
+  if (MAP.cobble.has(key)) {
+    return { color: "rgba(160,150,140,0.4)", vy: -0.3, life: 10, size: 1.5 };
+  }
+  if (MAP.sand.has(key)) {
+    return { color: "rgba(200,180,120,0.5)", vy: -0.4, life: 12, size: 2 };
+  }
+  if (MAP.paths.has(key)) {
+    return { color: "rgba(180,160,120,0.5)", vy: -0.3, life: 12, size: 2 };
+  }
+  // Grass — tiny green leaf
+  return { color: "rgba(80,140,60,0.4)", vy: -0.5, life: 15, size: 1.5 };
+}
+
+// ─── ACHIEVEMENT TOAST ─────────────────────────────────────────
+let _toasts = [];
+
+export function showToast(text) {
+  _toasts.push({ text, timer: 180, alpha: 0 }); // 3 seconds
+}
+
+export function updateToasts() {
+  for (let i = _toasts.length - 1; i >= 0; i--) {
+    const t = _toasts[i];
+    t.timer--;
+    if (t.timer > 160) t.alpha = Math.min(1, t.alpha + 0.1);
+    else if (t.timer < 30) t.alpha = Math.max(0, t.alpha - 0.04);
+    if (t.timer <= 0) _toasts.splice(i, 1);
+  }
+}
+
+export function drawToasts(ctx, cw) {
+  for (let i = 0; i < _toasts.length; i++) {
+    const t = _toasts[i];
+    const slideIn = Math.min(1, (180 - t.timer) / 15);
+    const x = cw - 10 - (180 * slideIn);
+    const y = 80 + i * 30;
+    ctx.globalAlpha = t.alpha;
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(x, y, 180, 24);
+    ctx.strokeStyle = "#FFD93D";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, 180, 24);
+    ctx.fillStyle = "#FFD93D";
+    ctx.font = "6px 'Press Start 2P',monospace";
+    ctx.fillText(t.text, x + 8, y + 15);
+  }
   ctx.globalAlpha = 1;
 }

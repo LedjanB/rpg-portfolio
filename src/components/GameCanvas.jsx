@@ -6,6 +6,7 @@ import { isNearHorse } from "../engine/proximity.js";
 import { COIN_POSITIONS, PROPS } from "../config/world.js";
 import { T, CW, CH, COLS, ROWS, C } from "../engine/constants.js";
 import { sfx, startMusic, stopMusic, startAmbient, stopAmbient, duckMusic } from "../engine/sound.js";
+import { startTransition, showToast } from "../render/atmosphere.js";
 import { createFishingState, findNearFishingSpot, startFishing, reelIn } from "../engine/fishing.js";
 import { createBreakableState, findNearBreakable, breakProp } from "../engine/breakables.js";
 import { createQuestState, recordBuildingVisit, getQuestProgress } from "../engine/quests.js";
@@ -138,6 +139,7 @@ export default function GameCanvas() {
       const caught = reelIn(fs);
       if (caught) {
         sfx.fishCatch();
+        showToast("Caught: " + (fs.fishName || "a fish") + "!");
         setFishCount(fc => {
           const newCount = fc + 1;
           // Easter egg: fish milestones
@@ -165,16 +167,23 @@ export default function GameCanvas() {
       const h = horseRef.current;
       if (h.mounted) { h.mounted = false; h.waiting = true; }
       sfx.door();
-      setPanel(g.nearDoor);
+      // Fade to black, then open panel, then fade back in
+      const doorId = g.nearDoor;
+      startTransition(1, () => {
+        setPanel(doorId);
+        setTimeout(() => startTransition(-1), 100);
+      });
       // Easter egg: building visit tracker
       const buildEE = onBuildingEnter(g.nearDoor);
       if (buildEE) setTimeout(() => setDialogue({ speaker: buildEE.speaker, lines: buildEE.lines, idx: 0 }), 1000);
       // Record building visit for quest
       const justCompleted = recordBuildingVisit(questRef.current, g.nearDoor);
       setQuestProgress(getQuestProgress(questRef.current));
+      showToast("Visited: " + g.nearDoor);
       if (justCompleted) {
         setTimeout(() => {
           sfx.quest();
+          showToast("QUEST COMPLETE: Grand Tour!");
           setDialogue({
             speaker: "QUEST COMPLETE!",
             lines: [
@@ -190,7 +199,7 @@ export default function GameCanvas() {
 
     // Pet the cat
     if (g.nearCat) {
-      sfx.talk();
+      sfx.talkCat();
       const catEE = onCatPet();
       if (catEE) {
         setDialogue({ speaker: catEE.speaker, lines: catEE.lines, idx: 0 });
@@ -202,7 +211,7 @@ export default function GameCanvas() {
 
     // Talk to NPC
     if (g.nearNPC) {
-      sfx.talk();
+      sfx.talkNPC(g.nearNPC);
       const npc = NPCS.find(n => n.id === g.nearNPC);
       if (npc) {
         setDialogue({ speaker: npc.label, lines: npc.lines, idx: 0 });
@@ -344,7 +353,13 @@ export default function GameCanvas() {
 
       {/* UI overlay — fixed to viewport, never zooms */}
       {dialogue && <DialogueBox speaker={dialogue.speaker} text={dialogue.lines[dialogue.idx]} hasMore={dialogue.idx < dialogue.lines.length - 1} onNext={handleInteract}/>}
-      {panel && <PortfolioPanel sectionId={panel} onClose={() => { setPanel(null); horseRef.current.waiting = false; }}/>}
+      {panel && <PortfolioPanel sectionId={panel} onClose={() => {
+        startTransition(1, () => {
+          setPanel(null);
+          horseRef.current.waiting = false;
+          setTimeout(() => startTransition(-1), 100);
+        });
+      }}/>}
       {isMobile && !dialogue && !panel && <MobileControls keysRef={keysRef} onAction={handleInteract}/>}
 
       {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} questProgress={questProgress} fishCount={fishCount} gameRef={gameRef}/>}

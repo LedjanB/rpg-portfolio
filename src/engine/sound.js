@@ -30,6 +30,13 @@ export function playTone(freq, dur, type = "square", vol = 0.08) {
 export const sfx = {
   coin:   () => { playTone(880,0.08); setTimeout(()=>playTone(1174,0.08),60); setTimeout(()=>playTone(1480,0.12),120); },
   talk:   () => playTone(440 + Math.random() * 200, 0.06, "square", 0.05),
+  // Per-NPC voice pitch (Animal Crossing style)
+  talkNPC: (npcId) => {
+    const pitches = { guide: 380, scholar: 500, fisher: 320, traveler: 420, merchant: 360, smith: 280, bard: 550, guard: 260, gardener: 400, astronomer: 480 };
+    const base = pitches[npcId] || 440;
+    playTone(base + Math.random() * 80, 0.06, "square", 0.05);
+  },
+  talkCat: () => playTone(800 + Math.random() * 200, 0.04, "sine", 0.04),
   door:   () => { playTone(220,0.15,"triangle",0.1); playTone(165,0.2,"triangle",0.06); },
   // Contextual footsteps — terrain type changes the sound
   step:       () => playTone(100 + Math.random() * 60, 0.04, "triangle", 0.03),
@@ -180,10 +187,57 @@ function playBirdChirp() {
   } catch (_) { /* */ }
 }
 
+let _isNight = false;
+export function setAmbientNight(night) { _isNight = night; }
+
+function playCricket() {
+  if (_muted) return;
+  try {
+    const a = getAudio();
+    const freq = 4000 + Math.random() * 1000;
+    // Rapid chirps
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        if (_muted) return;
+        const o = a.createOscillator();
+        const g = a.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(freq, a.currentTime);
+        g.gain.setValueAtTime(0.01, a.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.03);
+        o.connect(g); g.connect(a.destination);
+        o.start(); o.stop(a.currentTime + 0.03);
+      }, i * 40);
+    }
+  } catch (_) { /* */ }
+}
+
+function playOwlHoot() {
+  if (_muted) return;
+  try {
+    const a = getAudio();
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(300, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(250, a.currentTime + 0.4);
+    g.gain.setValueAtTime(0.015, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.4);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.4);
+  } catch (_) { /* */ }
+}
+
 function ambientTick() {
   if (_muted) return;
-  // Random bird chirp
-  if (Math.random() < 0.15) playBirdChirp();
+  if (_isNight) {
+    // Night: crickets and rare owl
+    if (Math.random() < 0.25) playCricket();
+    if (Math.random() < 0.03) playOwlHoot();
+  } else {
+    // Day: bird chirps
+    if (Math.random() < 0.15) playBirdChirp();
+  }
 }
 
 export function startAmbient() {
