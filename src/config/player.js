@@ -9,7 +9,7 @@ export const WORLD = {
   tileSize: 32,       // Pixel size of each tile
   viewportW: 20,      // Visible tiles horizontally
   viewportH: 15,      // Visible tiles vertically
-  playerSpeed: 2.6,   // Movement speed
+  playerSpeed: 3,      // Movement speed (integer for pixel-perfect rendering)
   playerStart: { x: 26, y: 10 }, // Starting tile position — on the crossroads
 };
 

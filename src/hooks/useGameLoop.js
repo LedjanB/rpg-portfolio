@@ -30,12 +30,12 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
     if (!started) return;
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = CW * dpr;
-    canvas.height = CH * dpr;
+    // Use 1:1 pixel ratio — CSS transform handles scaling to viewport.
+    // Avoids DPR sub-pixel artifacts that cause tile seam jitter.
+    canvas.width = CW;
+    canvas.height = CH;
     canvas.style.width = CW + "px";
     canvas.style.height = CH + "px";
-    ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
     let raf;
     const particles = new Particles();
@@ -83,8 +83,9 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
           g.moving = true; g.frame++;
           if (dx && dy) { dx *= 0.707; dy *= 0.707; }
           const result = moveWithCollision(g.px, g.py, dx, dy);
-          g.px = result.x;
-          g.py = result.y;
+          // Round player position to integers for pixel-perfect rendering
+          g.px = Math.round(result.x);
+          g.py = Math.round(result.y);
 
           // Easter egg: rapid key mashing
           const rapidEE = onRapidKeys(g.tick);
@@ -223,7 +224,9 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       g.nearBreakable = findNearBreakable(g.px, g.py);
       g.nearGardenPlot = findNearPlot(g.px, g.py, garden);
 
-      // ── Camera with smooth lerp ──
+      // ── Pixel-perfect camera ──
+      // Direct tracking with integer snap — no lerp means no stutter.
+      // Player pos is already integer, so camera stays perfectly aligned.
       const targetCamX = Math.max(0, Math.min(g.px - CW/2 + T/2, MAP.col[0].length*T - CW));
       const targetCamY = Math.max(0, Math.min(g.py - CH/2 + T/2, MAP.col.length*T - CH));
 
@@ -232,14 +235,16 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         smoothCamY = targetCamY;
         camInitialized = true;
       } else {
-        smoothCamX += (targetCamX - smoothCamX) * 0.08;
-        smoothCamY += (targetCamY - smoothCamY) * 0.08;
+        // Fast catch-up: move most of the way each frame, then snap when close
+        const dx = targetCamX - smoothCamX;
+        const dy = targetCamY - smoothCamY;
+        smoothCamX += Math.abs(dx) < 1 ? dx : dx * 0.25;
+        smoothCamY += Math.abs(dy) < 1 ? dy : dy * 0.25;
       }
 
-      // Snap camera to integer pixels to prevent sub-pixel tile seam jitter
       const shake = getScreenShake();
-      const camX = Math.round(smoothCamX + shake.x);
-      const camY = Math.round(smoothCamY + shake.y);
+      const camX = Math.round(smoothCamX) + Math.round(shake.x);
+      const camY = Math.round(smoothCamY) + Math.round(shake.y);
 
       // Expose screen shake trigger and break effects for interaction handler
       g._triggerShake = triggerScreenShake;
