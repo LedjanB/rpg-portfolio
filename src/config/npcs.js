@@ -3,7 +3,7 @@ import { YOUR_NAME } from "./player.js";
 
 // ─── NPCs ────────────────────────────────────────────────────────
 export const NPCS = [
-  { id: "guide", label: "VILLAGE GUIDE", x: 26, y: 11, dir: 0, hairC: COLORS.uiGold, shirtC: "#CC4444",
+  { id: "guide", label: "VILLAGE GUIDE", x: 26, y: 12, dir: 0, hairC: COLORS.uiGold, shirtC: "#CC4444",
     lines: [
       `Welcome to ${YOUR_NAME}'s\nportfolio village!`,
       "Each building tells a part\nof my story — walk to\nany door and press SPACE!",
@@ -24,7 +24,7 @@ export const NPCS = [
       "I traveled from the east\nto see this village.\nIt's quite impressive!",
       "The POST OFFICE up the\nroad is where you can\nreach the developer.",
     ]},
-  { id: "merchant", label: "MERCHANT", x: 25, y: 13, dir: 3, hairC: "#AA6622", shirtC: "#228844",
+  { id: "merchant", label: "MERCHANT", x: 24, y: 14, dir: 3, hairC: "#AA6622", shirtC: "#228844",
     lines: [
       "Welcome to the market!\nBrowse the stalls and\nexplore the square!",
       "The TOWN HALL up north\nhas the full resume.\nDon't miss it!",
@@ -69,7 +69,7 @@ export const HORSE = {
 
 // ─── CAT ─────────────────────────────────────────────────────────
 export const CAT = {
-  startX: 25, startY: 14,
+  startX: 20, startY: 11,
   speed: 1.2,
   lines: [
     "Meow! Purrrr... 🐱",

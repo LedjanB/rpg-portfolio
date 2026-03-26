@@ -16,7 +16,13 @@ export function updateCat(cat) {
   cat.moveTimer--; cat.frame++;
   const nx = cat.x+cat.vx, ny = cat.y+cat.vy;
   const col = Math.floor(nx/T), row = Math.floor(ny/T);
-  if (col>=3 && col<COLS-3 && row>=3 && row<ROWS-3 && MAP.col[row][col]===0) { cat.x=nx; cat.y=ny; }
-  else { cat.moveTimer=0; cat.pauseTimer = 40+Math.floor(Math.random()*60); }
-  if (cat.moveTimer <= 0) cat.pauseTimer = 50+Math.floor(Math.random()*80);
+  // Keep cat within a safe roaming area (away from fountain and map edges)
+  const inBounds = col >= 5 && col < COLS - 5 && row >= 5 && row < ROWS - 5;
+  const notBlocked = MAP.col[row] && MAP.col[row][col] === 0;
+  const notWater = !MAP.water.has(`${col},${row}`);
+  // Avoid fountain area (wide margin)
+  const nearFountain = col >= 23 && col <= 29 && row >= 11 && row <= 17;
+  if (inBounds && notBlocked && notWater && !nearFountain) { cat.x = nx; cat.y = ny; }
+  else { cat.moveTimer = 0; cat.pauseTimer = 40 + Math.floor(Math.random() * 60); }
+  if (cat.moveTimer <= 0) cat.pauseTimer = 50 + Math.floor(Math.random() * 80);
 }

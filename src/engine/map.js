@@ -2,7 +2,7 @@ import { BUILDINGS } from "../config/buildings.js";
 import { NPCS } from "../config/npcs.js";
 import {
   WATER_ZONES, BRIDGE_POSITIONS, DOCK_POSITIONS, PROPS,
-  EXTRA_TREES, FOREST_ZONES, COBBLE_ZONE, FOUNTAIN_POS,
+  EXTRA_TREES, FOREST_ZONES, COBBLE_ZONE, FOUNTAIN_POS, FOUNTAIN_TILES,
   ROAD_SEGMENTS, BREAKABLE_PROPS, GARDEN_PLOTS,
 } from "../config/world.js";
 import { COLS, ROWS } from "./constants.js";
@@ -100,7 +100,7 @@ export function buildMap() {
   trees.forEach(([x,y]) => { if (y<ROWS && x<COLS) col[y][x] = 1; });
   water.forEach(k => { const [x,y]=k.split(",").map(Number); if (y<ROWS && x<COLS) col[y][x] = 2; });
   BUILDINGS.forEach(b => { for (let dy=0; dy<b.h; dy++) for (let dx=0; dx<b.w; dx++) { const mx=b.x+dx, my=b.y+dy; if (my<ROWS && mx<COLS) col[my][mx] = 1; }});
-  col[FOUNTAIN_POS.y][FOUNTAIN_POS.x] = 1;
+  FOUNTAIN_TILES.forEach(([fx,fy]) => { if (fy < ROWS && fx < COLS) col[fy][fx] = 1; });
   bridges.forEach(k => { const [x,y]=k.split(",").map(Number); col[y][x] = 0; });
   BUILDINGS.forEach(b => { if (b.doorY<ROWS && b.doorX<COLS) col[b.doorY][b.doorX] = 0; });
   DOCK_POSITIONS.forEach(([x,y]) => { if (y<ROWS && x<COLS) col[y][x] = 0; });

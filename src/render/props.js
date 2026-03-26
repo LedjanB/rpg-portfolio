@@ -29,10 +29,10 @@ export function breakEffect(ctx, x, y, cx, cy, timer) {
   ctx.globalAlpha = 1;
 }
 
-export function flower(ctx, c, r, t, cx, cy, tick) {
+export function flower(ctx, c, r, t, cx, cy, tick, seasonalColors) {
   const px=c*T-cx+16,py=r*T-cy+20; if(px<-T||px>CW+T)return;
-  const cols=[C.flower1,C.flower2,C.flower3,C.flower4],sw=Math.sin(tick*0.04+c+r*3)*1.5;
-  ctx.fillStyle="#3A6A2A";ctx.fillRect(px,py+2,2,6);ctx.fillStyle=cols[t];ctx.fillRect(px-2+sw,py-1,6,5);ctx.fillStyle=C.flower2;ctx.fillRect(px+sw,py+1,2,2);
+  const cols=seasonalColors||[C.flower1,C.flower2,C.flower3,C.flower4],sw=Math.sin(tick*0.04+c+r*3)*1.5;
+  ctx.fillStyle="#3A6A2A";ctx.fillRect(px,py+2,2,6);ctx.fillStyle=cols[t%cols.length];ctx.fillRect(px-2+sw,py-1,6,5);ctx.fillStyle=C.flower2;ctx.fillRect(px+sw,py+1,2,2);
 }
 
 export function gardenPlot(ctx, plot, cx, cy, tick) {
@@ -78,22 +78,92 @@ export function gardenPlot(ctx, plot, cx, cy, tick) {
   }
 }
 
-export function lamppost(ctx, tc, tr, cx, cy, tick) {
+export function lamppost(ctx, tc, tr, cx, cy, tick, nightAmount = 0) {
   const px=tc*T-cx+16,py=tr*T-cy; if(px<-60||px>CW+60)return;
-  const flicker=Math.sin(tick*0.08+tc*3)*0.5+Math.sin(tick*0.13+tr*7)*0.3;
-  ctx.fillStyle="#3a3a3a";ctx.fillRect(px-2,py+10,4,22);
-  ctx.fillStyle="#4a4a4a";ctx.fillRect(px-4,py+30,8,3);
-  ctx.fillStyle="#3a3a3a";ctx.fillRect(px-1,py+8,2,4);ctx.fillRect(px-6,py+6,12,3);
-  ctx.fillStyle="#2a2a2a";ctx.fillRect(px-5,py+2,10,5);
-  ctx.fillStyle="#FFE8A0";ctx.fillRect(px-4,py+3,8,3);
-  const bulbBright=0.9+flicker*0.1;
-  ctx.fillStyle=`rgba(255,230,150,${bulbBright})`;ctx.fillRect(px-3,py+3,6,2);
-  const r=36+flicker*3;
+  const flicker=Math.sin(tick*0.1+tc*3)*0.4+Math.sin(tick*0.17+tr*5)*0.3+Math.cos(tick*0.23+tc*7)*0.2;
+  const nightBoost = 1 + nightAmount * 1.5; // glow expands at night
+
+  // ── Ornate iron base (wider, decorative) ──
+  ctx.fillStyle="#1a1a1a";
+  ctx.fillRect(px-6,py+28,12,4); // flat base plate
+  ctx.fillStyle="#222";
+  ctx.fillRect(px-4,py+27,8,2); // base trim
+  // Decorative scroll feet
+  ctx.fillStyle="#1a1a1a";
+  ctx.fillRect(px-8,py+30,4,2); ctx.fillRect(px+4,py+30,4,2);
+  ctx.fillRect(px-7,py+29,2,2); ctx.fillRect(px+5,py+29,2,2);
+
+  // ── Main pole (tall, slender black iron) ──
+  ctx.fillStyle="#111";
+  ctx.fillRect(px-1,py+8,3,20);
+  // Subtle highlight on pole
+  ctx.fillStyle="#2a2a2a";
+  ctx.fillRect(px,py+8,1,20);
+
+  // ── Decorative ring details on pole ──
+  ctx.fillStyle="#1a1a1a";
+  ctx.fillRect(px-2,py+24,5,2); // lower ring
+  ctx.fillRect(px-2,py+16,5,2); // middle ring
+  ctx.fillRect(px-2,py+10,5,2); // upper ring
+
+  // ── Ornate bracket / crossbar ──
+  ctx.fillStyle="#111";
+  ctx.fillRect(px-1,py+6,3,3);
+  // Curved arm holding lantern
+  ctx.fillRect(px-6,py+4,12,2);
+  ctx.fillStyle="#1a1a1a";
+  ctx.fillRect(px-7,py+5,2,3); ctx.fillRect(px+5,py+5,2,3); // scroll ends
+  // Top finial
+  ctx.fillStyle="#111";
+  ctx.fillRect(px,py+2,1,3);
+  ctx.fillRect(px-1,py+1,3,2);
+
+  // ── Glass lantern housing ──
+  ctx.fillStyle="#111";
+  ctx.fillRect(px-5,py-4,10,2); // lantern top cap
+  ctx.fillRect(px-4,py-2,8,1);  // top frame
+  ctx.fillRect(px-4,py+3,8,1);  // bottom frame
+  ctx.fillRect(px-4,py-2,1,6);  // left frame
+  ctx.fillRect(px+3,py-2,1,6);  // right frame
+
+  // ── Fire flame (animated) ──
+  const fireH = 4 + flicker * 1.5;
+  const fireW = 3 + flicker * 0.5;
+  // Outer flame (orange-red)
+  ctx.fillStyle=`rgba(255,120,20,${0.7+flicker*0.15})`;
+  ctx.beginPath();
+  ctx.moveTo(px - fireW, py + 2);
+  ctx.quadraticCurveTo(px - fireW - 0.5, py - fireH * 0.4, px, py - fireH);
+  ctx.quadraticCurveTo(px + fireW + 0.5, py - fireH * 0.4, px + fireW, py + 2);
+  ctx.closePath();
+  ctx.fill();
+  // Inner flame (bright yellow)
+  ctx.fillStyle=`rgba(255,200,50,${0.8+flicker*0.1})`;
+  ctx.beginPath();
+  ctx.moveTo(px - fireW * 0.5, py + 1);
+  ctx.quadraticCurveTo(px - fireW * 0.3, py - fireH * 0.3, px, py - fireH * 0.6);
+  ctx.quadraticCurveTo(px + fireW * 0.3, py - fireH * 0.3, px + fireW * 0.5, py + 1);
+  ctx.closePath();
+  ctx.fill();
+  // Core (white-hot)
+  ctx.fillStyle=`rgba(255,240,200,${0.6+flicker*0.2})`;
+  ctx.fillRect(px-1, py-1, 2, 2);
+
+  // ── Warm fire glow on ground (boosted at night) ──
+  const r=( 32+flicker*4)*nightBoost;
+  const glowAlpha1 = 0.12 + nightAmount * 0.15;
   const grd=ctx.createRadialGradient(px,py+28,0,px,py+28,r);
-  grd.addColorStop(0,"rgba(255,220,130,0.12)");grd.addColorStop(0.5,"rgba(255,200,100,0.06)");grd.addColorStop(1,"rgba(255,180,80,0)");
+  grd.addColorStop(0,`rgba(255,160,60,${glowAlpha1})`);
+  grd.addColorStop(0.4,`rgba(255,120,40,${glowAlpha1*0.5})`);
+  grd.addColorStop(1,"rgba(255,80,20,0)");
   ctx.fillStyle=grd;ctx.fillRect(px-r,py+28-r,r*2,r*2);
-  const r2=14+flicker*2;
-  const grd2=ctx.createRadialGradient(px,py+5,0,px,py+5,r2);
-  grd2.addColorStop(0,"rgba(255,230,160,0.25)");grd2.addColorStop(1,"rgba(255,200,100,0)");
-  ctx.fillStyle=grd2;ctx.fillRect(px-r2,py+5-r2,r2*2,r2*2);
+
+  // ── Lantern glow (close warm light, boosted at night) ──
+  const r2=(16+flicker*2)*nightBoost;
+  const glowAlpha2 = 0.3 + nightAmount * 0.3;
+  const grd2=ctx.createRadialGradient(px,py,0,px,py,r2);
+  grd2.addColorStop(0,`rgba(255,180,80,${glowAlpha2})`);
+  grd2.addColorStop(0.5,`rgba(255,140,50,${glowAlpha2*0.4})`);
+  grd2.addColorStop(1,"rgba(255,100,30,0)");
+  ctx.fillStyle=grd2;ctx.fillRect(px-r2,py-r2,r2*2,r2*2);
 }

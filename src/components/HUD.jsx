@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { COIN_POSITIONS } from "../config/world.js";
 import { C } from "../engine/constants.js";
-import { isMuted, toggleMute, isMusicOff, toggleMusic } from "../engine/sound.js";
+import { isMuted, toggleMute } from "../engine/sound.js";
 import { f1 } from "../styles.js";
 
-export default function HUD({ coinCount, easterEgg, zoom, zoomIn, zoomOut, questProgress, fishCount }) {
+export default function HUD({ coinCount, easterEgg, zoom, zoomIn, zoomOut, questProgress, fishCount, gameRef }) {
   const [muted, setMuted] = useState(isMuted());
-  const [musicOff, setMusicOff] = useState(isMusicOff());
+  const [playTime, setPlayTime] = useState("0:00");
   const handleToggleMute = () => setMuted(toggleMute());
-  const handleToggleMusic = () => setMusicOff(toggleMusic());
+
+  // Update play timer every second
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (gameRef?.current) {
+        const secs = Math.floor(gameRef.current.tick / 60);
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        setPlayTime(`${m}:${s.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [gameRef]);
 
   return (
     <>
@@ -30,10 +42,12 @@ export default function HUD({ coinCount, easterEgg, zoom, zoomIn, zoomOut, quest
               🐟 {fishCount}
             </div>
           )}
+          <div style={{ ...f1, fontSize:6, color:"#888", background:"rgba(0,0,0,0.4)", padding:"5px 10px", borderRadius:4 }}>
+            {playTime}
+          </div>
         </div>
       </div>
       <div style={{ position:"absolute", bottom:12, right:12, zIndex:10, display:"flex", gap:4 }}>
-        <button onClick={handleToggleMusic} aria-label={musicOff ? "Turn music on" : "Turn music off"} style={{ width:32, height:32, background:"rgba(0,0,0,0.6)", border:`1px solid ${C.uiBorder}`, borderRadius:6, color: musicOff ? "#666" : C.uiGold, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"auto" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.uiGold}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.uiBorder}}>{musicOff ? "🎵" : "🎶"}</button>
         <button onClick={handleToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} style={{ width:32, height:32, background:"rgba(0,0,0,0.6)", border:`1px solid ${C.uiBorder}`, borderRadius:6, color: muted ? "#666" : C.uiGold, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"auto" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.uiGold}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.uiBorder}}>{muted ? "🔇" : "🔊"}</button>
         {[["−",zoomOut,"Zoom out"],[null,null,null],["+",zoomIn,"Zoom in"]].map(([label,fn,ariaLabel],i) => i===1 ?
           <div key={i} aria-label={`Zoom level ${Math.round(zoom*100)}%`} style={{ width:44, height:32, background:"rgba(0,0,0,0.6)", border:`1px solid ${C.uiBorder}`, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", ...f1, fontSize:7, color:"#aaa" }}>{Math.round(zoom*100)}%</div> :

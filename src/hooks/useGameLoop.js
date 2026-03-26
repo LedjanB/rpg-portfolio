@@ -10,13 +10,20 @@ import { createCat, updateCat } from "../engine/cat.js";
 import { updateHorse } from "../engine/horse.js";
 import { HORSE } from "../config/npcs.js";
 import { createClouds } from "../engine/clouds.js";
-import { sfx } from "../engine/sound.js";
+import { sfx, playRainAmbient } from "../engine/sound.js";
 import { moveWithCollision } from "../engine/collision.js";
 import { findNearDoor, findNearNPC, isNearCat, isNearHorse, findNearSign } from "../engine/proximity.js";
 import { findNearFishingSpot, updateFishing } from "../engine/fishing.js";
 import { getBreakableState, findNearBreakable, updateBreakables } from "../engine/breakables.js";
 import { updateGarden, findNearPlot } from "../engine/garden.js";
+import { onRapidKeys, onStep, onCoinCollect } from "../engine/easterEggs.js";
 import { Render } from "../render/index.js";
+// New systems
+import { getNightAmount, updateFireflies, drawFireflies, drawStars, drawDayNightOverlay, drawBuildingGlow } from "../engine/daynight.js";
+import { createWeatherState, updateWeather, drawRain, getWindMultiplier } from "../engine/weather.js";
+import { updateButterflies, drawButterflies, updateBirds, drawBirds, updatePollen, drawPollen } from "../engine/wildlife.js";
+import { updateNPCs, getBreathingOffset, getEmoteState } from "../engine/npcBehavior.js";
+import { grassTufts, waterShimmer, emoteBubble, getScreenShake, triggerScreenShake, addFootprint, updateFootprints, drawFootprints, doorTooltip, getSeasonalFlowerColors } from "../render/atmosphere.js";
 
 export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue, fishingRef, breakablesRef, gardenRef) {
   useEffect(() => {
@@ -35,8 +42,13 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
     const cat = createCat();
     const horse = horseRef.current;
     const cloudList = createClouds();
-    // Break effect timers
     const breakEffects = [];
+    const weather = createWeatherState();
+    const seasonalColors = getSeasonalFlowerColors();
+
+    // Smooth camera state
+    let smoothCamX = 0, smoothCamY = 0;
+    let camInitialized = false;
 
     const scanlineCanvas = document.createElement("canvas");
     scanlineCanvas.width = 1;
@@ -46,16 +58,21 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
     slCtx.fillRect(0, 0, 1, 2);
     const scanlinePattern = ctx.createPattern(scanlineCanvas, "repeat");
 
+    // Coin squash-stretch animation state
+    const coinAnims = {};
+
     const loop = () => {
       const g = gameRef.current;
       const fs = fishingRef.current;
       const garden = gardenRef.current;
       g.tick++;
 
-      // Movement (blocked while fishing)
+      // ── Movement (blocked while fishing) ──
       if (!dialogueRef.current && !panelRef.current && fs.state === "idle") {
         const k = keysRef.current;
-        const speed = horse.mounted ? WORLD.playerSpeed * HORSE.rideSpeedMultiplier : WORLD.playerSpeed;
+        const sprinting = k.Shift;
+        const sprintMul = sprinting ? 1.5 : 1;
+        const speed = (horse.mounted ? WORLD.playerSpeed * HORSE.rideSpeedMultiplier : WORLD.playerSpeed) * sprintMul;
         let dx = 0, dy = 0;
         if (k.ArrowUp||k.w||k.W) { dy = -speed; g.dir = 1; }
         if (k.ArrowDown||k.s||k.S) { dy = speed; g.dir = 0; }
@@ -69,6 +86,16 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
           g.px = result.x;
           g.py = result.y;
 
+          // Easter egg: rapid key mashing
+          const rapidEE = onRapidKeys(g.tick);
+          if (rapidEE && !dialogueRef.current) setDialogue({ speaker: rapidEE.speaker, lines: rapidEE.lines, idx: 0 });
+
+          // Easter egg: marathon runner (step counter)
+          if (g.tick % 8 === 0) {
+            const stepEE = onStep();
+            if (stepEE && !dialogueRef.current) setDialogue({ speaker: stepEE.speaker, lines: stepEE.lines, idx: 0 });
+          }
+
           if (horse.mounted) {
             horse.x = g.px;
             horse.y = g.py;
@@ -76,27 +103,55 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
             horse.frame = g.frame;
           }
 
+          // Dust particles on paths
           const pc = Math.floor((g.px+16)/T), pr = Math.floor((g.py+24)/T);
-          if (MAP.paths.has(`${pc},${pr}`) && g.tick%4===0)
+          const onPath = MAP.paths.has(`${pc},${pr}`);
+          const onCobble = MAP.cobble.has(`${pc},${pr}`);
+
+          if (onPath && g.tick%4===0)
             particles.add(g.px+12+Math.random()*8, g.py+28, Math.random()*0.6-0.3, -0.3-Math.random()*0.3, 15+Math.random()*10, "rgba(180,160,120,0.6)", 2);
 
-          g.stepCd--; if (g.stepCd <= 0) { sfx.step(); g.stepCd = 12; }
+          // Sprint dust trail
+          if (sprinting && g.tick % 3 === 0) {
+            particles.add(g.px+12+Math.random()*8, g.py+30, Math.random()*0.4-0.2, -0.2-Math.random()*0.2, 10, "rgba(200,180,140,0.4)", 1.5);
+          }
+
+          // Footprint trail on paths
+          if (onPath && g.tick % 16 === 0) {
+            addFootprint(g.px, g.py);
+          }
+
+          // Contextual footstep sounds
+          g.stepCd--;
+          if (g.stepCd <= 0) {
+            const stepInterval = horse.mounted ? 8 : 12;
+            if (horse.mounted) sfx.stepHorse();
+            else if (onCobble) sfx.stepCobble();
+            else if (onPath) sfx.stepDirt();
+            else sfx.stepGrass();
+            g.stepCd = stepInterval;
+          }
         } else { g.moving = false; g.stepCd = 0; }
       }
 
-      // Coin collection
+      // ── Coin collection with squash-stretch ──
       COIN_POSITIONS.forEach(([cx2,cy2], i) => {
         if (!coinsRef.current[i] && Math.abs(g.px-cx2*T)<T && Math.abs(g.py-cy2*T)<T) {
           coinsRef.current[i] = true;
           coinCountRef.current++;
           setCoinCount(coinCountRef.current);
           sfx.coin();
+          // Squash-stretch animation
+          coinAnims[i] = { frame: 0 };
           for (let j=0; j<8; j++) particles.add(cx2*T+16, cy2*T+16, Math.random()*3-1.5, -Math.random()*2-1, 20, "#FFD700", 3);
+          // Easter egg: coin magnet
+          const coinEE = onCoinCollect(g.tick);
+          if (coinEE && !dialogueRef.current) setDialogue({ speaker: coinEE.speaker, lines: coinEE.lines, idx: 0 });
           if (coinCountRef.current === COIN_POSITIONS.length) {
             setEasterEgg(true); sfx.secret();
             setDialogue({ speaker: "QUEST COMPLETE!", lines: [
-              `Congratulations, you found\nall ${COIN_POSITIONS.length} hidden coins! 🎉`,
-              "You've fully explored the\nvillage... so does this\nmean I'm hired?? 😏",
+              `Congratulations, you found\nall ${COIN_POSITIONS.length} hidden coins!`,
+              "You've fully explored the\nvillage... so does this\nmean I'm hired??",
               "Thanks for playing!\nFeel free to reach out\nat the POST OFFICE!",
             ], idx: 0, autoClose: 10000 });
             setTimeout(() => {
@@ -109,20 +164,40 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         }
       });
 
-      // Cat AI
+      // Update coin squash-stretch animations
+      for (const key in coinAnims) {
+        coinAnims[key].frame++;
+        if (coinAnims[key].frame > 10) delete coinAnims[key];
+      }
+
+      // ── AI Updates ──
       updateCat(cat);
-
-      // Horse AI
       updateHorse(horse);
-
-      // Fishing update
       updateFishing(fs);
-
-      // Breakables update
       updateBreakables();
-
-      // Garden update
       updateGarden(garden);
+      updateFootprints();
+
+      // ── New system updates ──
+      updateWeather(weather, g.tick);
+      const windMul = getWindMultiplier(weather);
+      const nightAmount = getNightAmount(g.tick);
+      const mapW = WORLD.cols * T;
+      const mapH = WORLD.rows * T;
+      updateFireflies(g.tick, nightAmount, mapW, mapH);
+      updateButterflies(g.tick);
+      updateBirds(g.tick);
+      updatePollen(g.tick, windMul >= 1 ? 1 : -1);
+      updateNPCs(NPCS, g.px, g.py, g.tick);
+
+      // Rain ambient sound
+      if (weather.raining && g.tick % 6 === 0) {
+        playRainAmbient(weather.rainIntensity);
+      }
+      // Thunder during rain
+      if (weather.raining && weather.rainIntensity > 0.7 && Math.random() < 0.001) {
+        sfx.thunder();
+      }
 
       // Break effect particles cleanup
       for (let i = breakEffects.length - 1; i >= 0; i--) {
@@ -130,14 +205,15 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         if (breakEffects[i].timer <= 0) breakEffects.splice(i, 1);
       }
 
-      // Leaf particles
+      // Leaf particles (wind-affected)
       if (g.tick%25===0 && MAP.trees.length>0) {
         const [tx,ty] = MAP.trees[Math.floor(Math.random()*MAP.trees.length)];
-        particles.add(tx*T+8+Math.random()*16, ty*T+4, -0.2+Math.random()*0.4, 0.3+Math.random()*0.3, 80+Math.random()*40, C.leaf, 2);
+        const leafVx = -0.2 + Math.random() * 0.4 + (windMul - 1) * 0.5;
+        particles.add(tx*T+8+Math.random()*16, ty*T+4, leafVx, 0.3+Math.random()*0.3, 80+Math.random()*40, C.leaf, 2);
       }
       particles.update();
 
-      // Proximity detection
+      // ── Proximity detection ──
       g.nearDoor = findNearDoor(g.px, g.py);
       g.nearNPC = findNearNPC(g.px, g.py);
       g.nearCat = isNearCat(g.px, g.py, cat.x, cat.y);
@@ -147,18 +223,46 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       g.nearBreakable = findNearBreakable(g.px, g.py);
       g.nearGardenPlot = findNearPlot(g.px, g.py, garden);
 
-      // Camera
-      const camX = Math.max(0, Math.min(g.px - CW/2 + T/2, MAP.col[0].length*T - CW));
-      const camY = Math.max(0, Math.min(g.py - CH/2 + T/2, MAP.col.length*T - CH));
+      // ── Camera with smooth lerp ──
+      const targetCamX = Math.max(0, Math.min(g.px - CW/2 + T/2, MAP.col[0].length*T - CW));
+      const targetCamY = Math.max(0, Math.min(g.py - CH/2 + T/2, MAP.col.length*T - CH));
+
+      if (!camInitialized) {
+        smoothCamX = targetCamX;
+        smoothCamY = targetCamY;
+        camInitialized = true;
+      } else {
+        smoothCamX += (targetCamX - smoothCamX) * 0.08;
+        smoothCamY += (targetCamY - smoothCamY) * 0.08;
+      }
+
+      // Screen shake offset
+      const shake = getScreenShake();
+      const camX = smoothCamX + shake.x;
+      const camY = smoothCamY + shake.y;
+
+      // Expose screen shake trigger and break effects for interaction handler
+      g._triggerShake = triggerScreenShake;
+      g._breakEffects = breakEffects;
 
       // ── Draw everything ──
       ctx.clearRect(0, 0, CW, CH);
+
+      // Stars (behind everything, only at night)
+      drawStars(ctx, CW, CH, g.tick, nightAmount);
+
       Render.ground(ctx, camX, camY, g.tick);
-      Render.clouds(ctx, cloudList, camX);
+      waterShimmer(ctx, camX, camY, g.tick);
+      grassTufts(ctx, camX, camY, g.tick, windMul);
+      drawFootprints(ctx, camX, camY);
+      Render.clouds(ctx, cloudList, camX, windMul);
+      drawBirds(ctx);
       Render.dock(ctx, camX, camY);
       Render.reeds(ctx, camX, camY, g.tick);
       Render.lilypads(ctx, camX, camY, g.tick);
-      FLOWER_POSITIONS.forEach(([fc,fr,ft]) => Render.flower(ctx, fc, fr, ft, camX, camY, g.tick));
+
+      // Seasonal flowers
+      FLOWER_POSITIONS.forEach(([fc,fr,ft]) => Render.flower(ctx, fc, fr, ft, camX, camY, g.tick, seasonalColors));
 
       // Garden plots
       garden.forEach(plot => Render.gardenPlot(ctx, plot, camX, camY, g.tick));
@@ -166,19 +270,27 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       MAP.filteredFences.forEach(([fx,fy]) => Render.fence(ctx, fx, fy, camX, camY));
       PROPS.forEach(p => Render.prop(ctx, p, camX, camY));
 
-      // Breakable props (only draw intact ones)
+      // Breakable props
       const bState = getBreakableState();
       bState.forEach(p => {
         if (!p.broken) Render.prop(ctx, p, camX, camY);
       });
-      // Break effects
       breakEffects.forEach(e => Render.breakEffect(ctx, e.x, e.y, camX, camY, e.timer));
 
       Render.fountain(ctx, camX, camY, g.tick);
       BUILDINGS.forEach(b => Render.building(ctx, b, camX, camY));
-      Render.smoke(ctx, camX, camY, g.tick);
-      LAMPPOST_POSITIONS.forEach(([tc,tr]) => Render.lamppost(ctx, tc, tr, camX, camY, g.tick));
-      COIN_POSITIONS.forEach(([cx2,cy2], i) => Render.coin(ctx, cx2, cy2, camX, camY, g.tick, coinsRef.current[i]));
+
+      // Building window glow at night
+      drawBuildingGlow(ctx, BUILDINGS, camX, camY, g.tick, nightAmount);
+
+      Render.smoke(ctx, camX, camY, g.tick, nightAmount);
+      LAMPPOST_POSITIONS.forEach(([tc,tr]) => Render.lamppost(ctx, tc, tr, camX, camY, g.tick, nightAmount));
+
+      // Coins with squash-stretch
+      COIN_POSITIONS.forEach(([cx2,cy2], i) => {
+        const anim = coinAnims[i];
+        Render.coin(ctx, cx2, cy2, camX, camY, g.tick, coinsRef.current[i], anim);
+      });
       if (coinCountRef.current === COIN_POSITIONS.length) Render.easterEgg(ctx, camX, camY, g.tick);
 
       // Fishing visuals
@@ -189,7 +301,17 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       }
 
       Render.cat(ctx, cat, camX, camY);
-      NPCS.forEach(n => Render.character(ctx, n.x*T, n.y*T, n.dir, g.tick, camX, camY, n.hairC, n.shirtC, false));
+
+      // NPCs with breathing + emote bubbles
+      NPCS.forEach(n => {
+        const breathOffset = getBreathingOffset(n.id, g.tick);
+        Render.character(ctx, n.x*T, n.y*T + breathOffset, n.dir, g.tick, camX, camY, n.hairC, n.shirtC, false);
+        // Emote bubble
+        const emote = getEmoteState(n.id);
+        if (emote) emoteBubble(ctx, n.x*T, n.y*T + breathOffset, camX, camY, emote, g.tick);
+      });
+
+      // Horse and player
       if (!horse.mounted) Render.horse(ctx, horse, camX, camY);
       if (horse.mounted) {
         Render.horse(ctx, horse, camX, camY);
@@ -197,12 +319,25 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       } else {
         Render.character(ctx, g.px, g.py, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
       }
-      MAP.trees.forEach(([tc,tr]) => Render.tree(ctx, tc, tr, camX, camY, g.tick));
+      MAP.trees.forEach(([tc,tr]) => Render.tree(ctx, tc, tr, camX, camY, g.tick, windMul));
       particles.draw(ctx, camX, camY);
 
-      // Interaction hints
+      // Butterflies & pollen
+      drawButterflies(ctx, camX, camY, g.tick);
+      drawPollen(ctx);
+
+      // Fireflies (above most things)
+      drawFireflies(ctx, camX, camY, g.tick);
+
+      // Interaction hints with door tooltips
       if (!dialogueRef.current && !panelRef.current) {
-        if (g.nearDoor) { const b = BUILDINGS.find(bb => bb.id === g.nearDoor); if (b) Render.hint(ctx, b.doorX*T, b.doorY*T, camX, camY, g.tick); }
+        if (g.nearDoor) {
+          const b = BUILDINGS.find(bb => bb.id === g.nearDoor);
+          if (b) {
+            doorTooltip(ctx, b, camX, camY, g.tick);
+            Render.hint(ctx, b.doorX*T, b.doorY*T, camX, camY, g.tick);
+          }
+        }
         else if (g.nearCat) Render.hint(ctx, cat.x, cat.y, camX, camY, g.tick, "PET");
         else if (g.nearNPC) { const n = NPCS.find(nn => nn.id === g.nearNPC); if (n) Render.hint(ctx, n.x*T, n.y*T, camX, camY, g.tick, "TALK"); }
         else if (g.nearSign) Render.hint(ctx, g.nearSign.x*T, g.nearSign.y*T, camX, camY, g.tick, "READ");
@@ -214,6 +349,12 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         if (g.nearHorse) Render.hint(ctx, horse.x, horse.y, camX, camY, g.tick, "M: RIDE");
         if (horse.mounted) Render.hint(ctx, g.px, g.py-10, camX, camY, g.tick, "M: DISMOUNT");
       }
+
+      // Rain overlay (screen-space)
+      drawRain(ctx, weather);
+
+      // Day/night tint overlay (on top of everything)
+      drawDayNightOverlay(ctx, CW, CH, g.tick);
 
       // Scanlines
       if (scanlinePattern) { ctx.fillStyle = scanlinePattern; ctx.fillRect(0, 0, CW, CH); }

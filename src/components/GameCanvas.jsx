@@ -3,13 +3,14 @@ import { WORLD, ZOOM_LEVELS, DEFAULT_ZOOM } from "../config/player.js";
 import { NPCS, CAT } from "../config/npcs.js";
 import { createHorse } from "../engine/horse.js";
 import { isNearHorse } from "../engine/proximity.js";
-import { COIN_POSITIONS } from "../config/world.js";
+import { COIN_POSITIONS, PROPS } from "../config/world.js";
 import { T, CW, CH, COLS, ROWS, C } from "../engine/constants.js";
-import { sfx, startMusic, stopMusic } from "../engine/sound.js";
+import { sfx, startMusic, stopMusic, startAmbient, stopAmbient, duckMusic } from "../engine/sound.js";
 import { createFishingState, findNearFishingSpot, startFishing, reelIn } from "../engine/fishing.js";
 import { createBreakableState, findNearBreakable, breakProp } from "../engine/breakables.js";
 import { createQuestState, recordBuildingVisit, getQuestProgress } from "../engine/quests.js";
 import { createGardenState, findNearPlot, plantSeed } from "../engine/garden.js";
+import { onCatPet, onFountainInteract, onWellInteract, onNPCTalk, onFishCaught, onGardenCheck, onPropBreak, onMountToggle, onBuildingEnter } from "../engine/easterEggs.js";
 import { useInput } from "../hooks/useInput.js";
 import { useGameLoop } from "../hooks/useGameLoop.js";
 import { KEYFRAMES } from "../styles.js";
@@ -89,6 +90,20 @@ export default function GameCanvas() {
     } catch (_) { /* storage full or unavailable */ }
   }, [coinCount, easterEgg, fishCount, questProgress]);
 
+  const [autoScale, setAutoScale] = useState(1);
+
+  // Compute auto-scale to fill viewport
+  useEffect(() => {
+    const update = () => {
+      const scaleX = window.innerWidth / CW;
+      const scaleY = window.innerHeight / CH;
+      setAutoScale(Math.max(scaleX, scaleY));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   const zoomIn = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i < ZOOM_LEVELS.length-1 ? ZOOM_LEVELS[i+1] : z; }), []);
   const zoomOut = useCallback(() => setZoom(z => { const i = ZOOM_LEVELS.indexOf(z); return i > 0 ? ZOOM_LEVELS[i-1] : z; }), []);
 
@@ -101,11 +116,16 @@ export default function GameCanvas() {
   useEffect(() => { panelRef.current = panel; }, [panel]);
   useEffect(() => { setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0); }, []);
 
-  // Start background music when game starts
+  // Start background music and ambient sounds when game starts
   useEffect(() => {
-    if (started) startMusic();
-    return () => stopMusic();
+    if (started) { startMusic(); startAmbient(); }
+    return () => { stopMusic(); stopAmbient(); };
   }, [started]);
+
+  // Duck music during dialogue
+  useEffect(() => {
+    duckMusic(!!dialogue);
+  }, [dialogue]);
 
   // ── Interaction Handler ──
   const handleInteract = useCallback(() => {
@@ -117,7 +137,15 @@ export default function GameCanvas() {
       const caught = reelIn(fs);
       if (caught) {
         sfx.fishCatch();
-        setFishCount(fc => fc + 1);
+        setFishCount(fc => {
+          const newCount = fc + 1;
+          // Easter egg: fish milestones
+          setTimeout(() => {
+            const fishEE = onFishCaught(newCount);
+            if (fishEE) setDialogue({ speaker: fishEE.speaker, lines: fishEE.lines, idx: 0 });
+          }, 1500);
+          return newCount;
+        });
       }
       return;
     }
@@ -137,6 +165,9 @@ export default function GameCanvas() {
       if (h.mounted) { h.mounted = false; h.waiting = true; }
       sfx.door();
       setPanel(g.nearDoor);
+      // Easter egg: building visit tracker
+      const buildEE = onBuildingEnter(g.nearDoor);
+      if (buildEE) setTimeout(() => setDialogue({ speaker: buildEE.speaker, lines: buildEE.lines, idx: 0 }), 1000);
       // Record building visit for quest
       const justCompleted = recordBuildingVisit(questRef.current, g.nearDoor);
       setQuestProgress(getQuestProgress(questRef.current));
@@ -159,7 +190,12 @@ export default function GameCanvas() {
     // Pet the cat
     if (g.nearCat) {
       sfx.talk();
-      setDialogue({ speaker: "CAT", lines: CAT.lines, idx: 0 });
+      const catEE = onCatPet();
+      if (catEE) {
+        setDialogue({ speaker: catEE.speaker, lines: catEE.lines, idx: 0 });
+      } else {
+        setDialogue({ speaker: "CAT", lines: CAT.lines, idx: 0 });
+      }
       return;
     }
 
@@ -167,7 +203,14 @@ export default function GameCanvas() {
     if (g.nearNPC) {
       sfx.talk();
       const npc = NPCS.find(n => n.id === g.nearNPC);
-      if (npc) setDialogue({ speaker: npc.label, lines: npc.lines, idx: 0 });
+      if (npc) {
+        setDialogue({ speaker: npc.label, lines: npc.lines, idx: 0 });
+        // Easter egg: social butterfly (track talked NPCs)
+        setTimeout(() => {
+          const npcEE = onNPCTalk(g.nearNPC);
+          if (npcEE) setDialogue({ speaker: npcEE.speaker, lines: npcEE.lines, idx: 0 });
+        }, 3000);
+      }
       return;
     }
 
@@ -191,6 +234,17 @@ export default function GameCanvas() {
     if (g.nearBreakable >= 0) {
       if (breakProp(g.nearBreakable)) {
         sfx.breakProp();
+        // Screen shake on break!
+        if (g._triggerShake) g._triggerShake(6, 3);
+        // Break effect particles
+        if (g._breakEffects) {
+          const bState2 = createBreakableState();
+          const bp = bState2[g.nearBreakable];
+          if (bp) g._breakEffects.push({ x: bp.x, y: bp.y, timer: 20 });
+        }
+        // Easter egg: property damage tracker
+        const breakEE = onPropBreak(g.nearBreakable);
+        if (breakEE) setTimeout(() => setDialogue({ speaker: breakEE.speaker, lines: breakEE.lines, idx: 0 }), 500);
         return;
       }
     }
@@ -199,8 +253,27 @@ export default function GameCanvas() {
     if (g.nearGardenPlot >= 0) {
       if (plantSeed(gardenRef.current, g.nearGardenPlot)) {
         sfx.plant();
+        // Easter egg: garden completion check
+        setTimeout(() => {
+          const gardenEE = onGardenCheck(gardenRef.current);
+          if (gardenEE) setDialogue({ speaker: gardenEE.speaker, lines: gardenEE.lines, idx: 0 });
+        }, 2000);
         return;
       }
+    }
+
+    // Easter egg: fountain wish (interact near fountain with nothing else around)
+    const fountainEE = onFountainInteract(g.px, g.py);
+    if (fountainEE) {
+      setDialogue({ speaker: fountainEE.speaker, lines: fountainEE.lines, idx: 0 });
+      return;
+    }
+
+    // Easter egg: well wish
+    const wellEE = onWellInteract(g.px, g.py, PROPS);
+    if (wellEE) {
+      setDialogue({ speaker: wellEE.speaker, lines: wellEE.lines, idx: 0 });
+      return;
     }
   }, []);
 
@@ -224,9 +297,16 @@ export default function GameCanvas() {
       h.dir = g.dir;
       sfx.step();
     }
+    // Easter egg: rodeo clown (mount/dismount spam)
+    const rodeoEE = onMountToggle(g.tick);
+    if (rodeoEE) setDialogue({ speaker: rodeoEE.speaker, lines: rodeoEE.lines, idx: 0 });
   }, []);
 
-  const keysRef = useInput(handleInteract, zoomIn, zoomOut, setPanel, setDialogue, dialogueRef, panelRef, handleMount);
+  // Help overlay toggle
+  const [showHelp, setShowHelp] = useState(false);
+  const toggleHelp = useCallback(() => setShowHelp(h => !h), []);
+
+  const keysRef = useInput(handleInteract, zoomIn, zoomOut, setPanel, setDialogue, dialogueRef, panelRef, handleMount, toggleHelp);
   useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, started, setCoinCount, setEasterEgg, setDialogue, fishingRef, breakablesRef, gardenRef);
 
   // ── Keep zoom centered on the player ──
@@ -256,9 +336,9 @@ export default function GameCanvas() {
     <div style={{ width:"100%", height:"100vh", background:C.pageBg, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
       <style>{KEYFRAMES}</style>
 
-      {/* Canvas — only this zooms */}
-      <div ref={zoomWrapperRef} style={{ position:"relative", transform:`scale(${zoom})`, transition:"transform 0.2s ease-out", zIndex:1 }}>
-        <canvas ref={canvasRef} width={CW} height={CH} role="img" aria-label="RPG Portfolio game — use arrow keys or WASD to move, Space to interact" style={{ width:CW, height:CH, imageRendering:"pixelated", borderRadius:4, boxShadow:"0 0 40px rgba(0,0,0,0.8)", display:"block" }}/>
+      {/* Canvas — auto-scales to fill viewport, then user zoom on top */}
+      <div ref={zoomWrapperRef} style={{ position:"relative", transform:`scale(${autoScale * zoom})`, transition:"transform 0.2s ease-out", zIndex:1 }}>
+        <canvas ref={canvasRef} width={CW} height={CH} role="img" aria-label="RPG Portfolio game — use arrow keys or WASD to move, Space to interact" style={{ width:CW, height:CH, imageRendering:"pixelated", display:"block" }}/>
       </div>
 
       {/* UI overlay — fixed to viewport, never zooms */}
@@ -266,8 +346,28 @@ export default function GameCanvas() {
       {panel && <PortfolioPanel sectionId={panel} onClose={() => { setPanel(null); horseRef.current.waiting = false; }}/>}
       {isMobile && !dialogue && !panel && <MobileControls keysRef={keysRef} onAction={handleInteract}/>}
 
-      {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} questProgress={questProgress} fishCount={fishCount}/>}
+      {!panel && !dialogue && <HUD coinCount={coinCount} easterEgg={easterEgg} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} questProgress={questProgress} fishCount={fishCount} gameRef={gameRef}/>}
       {!panel && !dialogue && <Minimap gameRef={gameRef} zoom={zoom}/>}
+
+      {/* Help Overlay */}
+      {showHelp && (
+        <div onClick={toggleHelp} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:C.uiBg, border:`3px solid ${C.uiBorder}`, borderRadius:12, padding:"24px 32px", maxWidth:420, fontFamily:"'Press Start 2P',monospace" }}>
+            <div style={{ color:C.uiGold, fontSize:12, marginBottom:16, textAlign:"center" }}>CONTROLS</div>
+            <div style={{ color:C.uiText, fontSize:7, lineHeight:2.4 }}>
+              {"WASD / Arrows .... Move\n" +
+               "SPACE / Enter .... Interact\n" +
+               "M ................ Mount Horse\n" +
+               "SHIFT ............ Sprint\n" +
+               "+/- or Scroll .... Zoom\n" +
+               "H / ? ............ This Help\n" +
+               "ESC .............. Close Panel\n\n" +
+               "Explore buildings, talk to NPCs,\ncollect coins, fish, plant gardens,\nand discover easter eggs!"}
+            </div>
+            <div style={{ color:"#666", fontSize:6, marginTop:12, textAlign:"center" }}>Press any key to close</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

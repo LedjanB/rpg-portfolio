@@ -8,6 +8,8 @@ export function isMuted() { return _muted; }
 export function toggleMute() {
   _muted = !_muted;
   try { localStorage.setItem("rpg-portfolio-muted", _muted); } catch (_) { /* */ }
+  if (_muted) { stopMusic(); stopAmbient(); }
+  else if (!_musicOff) startMusic();
   return _muted;
 }
 
@@ -24,11 +26,17 @@ export function playTone(freq, dur, type = "square", vol = 0.08) {
   try { const a = getAudio(), o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(freq, a.currentTime); g.gain.setValueAtTime(vol, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur); o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur); } catch (_) { /* Audio may be blocked by browser autoplay policy */ }
 }
 
+// ─── CONTEXTUAL FOOTSTEP SOUNDS ─────────────────────────────────
 export const sfx = {
   coin:   () => { playTone(880,0.08); setTimeout(()=>playTone(1174,0.08),60); setTimeout(()=>playTone(1480,0.12),120); },
   talk:   () => playTone(440 + Math.random() * 200, 0.06, "square", 0.05),
   door:   () => { playTone(220,0.15,"triangle",0.1); playTone(165,0.2,"triangle",0.06); },
-  step:   () => playTone(100 + Math.random() * 60, 0.04, "triangle", 0.03),
+  // Contextual footsteps — terrain type changes the sound
+  step:       () => playTone(100 + Math.random() * 60, 0.04, "triangle", 0.03),
+  stepDirt:   () => playTone(80 + Math.random() * 40, 0.05, "triangle", 0.03),
+  stepCobble: () => playTone(140 + Math.random() * 40, 0.03, "square", 0.02),
+  stepGrass:  () => playTone(60 + Math.random() * 30, 0.05, "sine", 0.02),
+  stepHorse:  () => { playTone(80, 0.06, "triangle", 0.04); setTimeout(() => playTone(100, 0.06, "triangle", 0.03), 40); },
   secret: () => [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f,0.15,"square",0.07), i*120)),
   splash: () => { playTone(200,0.12,"sine",0.06); playTone(300,0.08,"sine",0.04); },
   fishBite: () => { playTone(880,0.05); setTimeout(()=>playTone(1100,0.05),50); },
@@ -36,6 +44,10 @@ export const sfx = {
   breakProp: () => { playTone(150,0.08,"sawtooth",0.06); playTone(100,0.1,"sawtooth",0.04); },
   plant:  () => playTone(520 + Math.random() * 100, 0.08, "sine", 0.05),
   quest:  () => [523,659,784,1047,1318].forEach((f,i) => setTimeout(() => playTone(f,0.18,"square",0.06), i*100)),
+  uiClick: () => playTone(600, 0.03, "square", 0.03),
+  thunder: () => { playTone(40, 0.6, "sawtooth", 0.04); playTone(55, 0.4, "triangle", 0.03); },
+  bell: () => [523, 440, 392].forEach((f, i) => setTimeout(() => playTone(f, 0.5, "sine", 0.04), i * 300)),
+  sit: () => playTone(330, 0.1, "sine", 0.04),
 };
 
 // ─── BACKGROUND MUSIC (procedural chiptune) ─────────────────────
@@ -104,14 +116,13 @@ function musicTick() {
 }
 
 export function startMusic() {
-  if (_musicOff || _musicTimer) return;
+  if (_musicTimer || _musicOff || _muted) return;
   try {
     const a = getAudio();
     _musicGain = a.createGain();
     _musicGain.gain.setValueAtTime(0.6, a.currentTime);
     _musicGain.connect(a.destination);
     _musicStep = 0;
-    musicTick();
     _musicTimer = setInterval(musicTick, NOTE_DUR * 1000);
   } catch (_) { /* */ }
 }
@@ -120,4 +131,91 @@ export function stopMusic() {
   if (_musicTimer) { clearInterval(_musicTimer); _musicTimer = null; }
   _musicGain = null;
   _musicOscs = [];
+}
+
+// ─── MUSIC VOLUME DUCKING (for dialogue) ────────────────────────
+export function duckMusic(duck) {
+  if (!_musicGain) return;
+  try {
+    const a = getAudio();
+    _musicGain.gain.cancelScheduledValues(a.currentTime);
+    _musicGain.gain.setValueAtTime(_musicGain.gain.value, a.currentTime);
+    _musicGain.gain.linearRampToValueAtTime(duck ? 0.15 : 0.6, a.currentTime + 0.3);
+  } catch (_) { /* */ }
+}
+
+// ─── AMBIENT SOUND LAYER ────────────────────────────────────────
+let _ambientTimer = null;
+let _ambientActive = false;
+
+function playBirdChirp() {
+  if (_muted) return;
+  try {
+    const a = getAudio();
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = "sine";
+    const startFreq = 1800 + Math.random() * 600;
+    o.frequency.setValueAtTime(startFreq, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(startFreq * 0.6, a.currentTime + 0.12);
+    g.gain.setValueAtTime(0.02, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.12);
+    // Second chirp
+    if (Math.random() < 0.5) {
+      setTimeout(() => {
+        if (_muted) return;
+        const o2 = a.createOscillator();
+        const g2 = a.createGain();
+        o2.type = "sine";
+        o2.frequency.setValueAtTime(startFreq * 1.2, a.currentTime);
+        o2.frequency.exponentialRampToValueAtTime(startFreq * 0.7, a.currentTime + 0.1);
+        g2.gain.setValueAtTime(0.015, a.currentTime);
+        g2.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.1);
+        o2.connect(g2); g2.connect(a.destination);
+        o2.start(); o2.stop(a.currentTime + 0.1);
+      }, 120);
+    }
+  } catch (_) { /* */ }
+}
+
+function ambientTick() {
+  if (_muted) return;
+  // Random bird chirp
+  if (Math.random() < 0.15) playBirdChirp();
+}
+
+export function startAmbient() {
+  if (_ambientActive || _muted) return;
+  _ambientActive = true;
+  _ambientTimer = setInterval(ambientTick, 1000);
+}
+
+export function stopAmbient() {
+  if (_ambientTimer) { clearInterval(_ambientTimer); _ambientTimer = null; }
+  _ambientActive = false;
+}
+
+// Play rain ambient sound
+export function playRainAmbient(intensity) {
+  if (_muted || intensity < 0.1) return;
+  try {
+    const a = getAudio();
+    // Filtered noise burst for rain patter
+    const bufSize = a.sampleRate * 0.05;
+    const buf = a.createBuffer(1, bufSize, a.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    const filter = a.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(800, a.currentTime);
+    const g = a.createGain();
+    g.gain.setValueAtTime(intensity * 0.015, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.05);
+    src.connect(filter); filter.connect(g); g.connect(a.destination);
+    src.start(); src.stop(a.currentTime + 0.05);
+  } catch (_) { /* */ }
 }

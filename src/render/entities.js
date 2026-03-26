@@ -103,8 +103,26 @@ export function horse(ctx, horseObj, cx, cy) {
   }
 }
 
-export function coin(ctx, cx2, cy2, cx, cy, tick, collected) {
-  if(collected)return; const px=cx2*T-cx+16,py=cy2*T-cy+16; if(px<-T||px>CW+T)return;
+export function coin(ctx, cx2, cy2, cx, cy, tick, collected, anim) {
+  if(collected && !anim)return; const px=cx2*T-cx+16,py=cy2*T-cy+16; if(px<-T||px>CW+T)return;
+
+  // Squash-stretch on collection
+  if (anim) {
+    const t = anim.frame / 10;
+    const scaleX = 1 + Math.sin(t * Math.PI) * 0.5;
+    const scaleY = 1 - Math.sin(t * Math.PI) * 0.3;
+    const alpha = 1 - t;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(scaleX, scaleY);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = C.coin;
+    ctx.beginPath(); ctx.ellipse(0, 0, 6, 6, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    return;
+  }
+
   const bob=Math.sin(tick*0.08+cx2+cy2)*3,w=Math.abs(Math.sin(tick*0.06+cx2*2))*8+4;
   ctx.fillStyle=C.coin;ctx.beginPath();ctx.ellipse(px,py+bob,w/2,6,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=C.coinDark;ctx.beginPath();ctx.ellipse(px,py+bob,w/2-1,4,0,0,Math.PI*2);ctx.fill();
