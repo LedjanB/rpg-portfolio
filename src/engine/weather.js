@@ -51,32 +51,37 @@ export function updateWeather(w, tick) {
       });
     }
 
-    // Update drops
-    for (let i = w.rainDrops.length - 1; i >= 0; i--) {
+    // Update drops — swap-and-pop for O(1) removal instead of splice O(n)
+    let len = w.rainDrops.length;
+    for (let i = len - 1; i >= 0; i--) {
       const d = w.rainDrops[i];
       d.y += d.speed;
       d.x += d.drift;
       if (d.y > 500) {
-        // Create splash ripple occasionally
         if (Math.random() < 0.05 && w.puddles.length < 30) {
           w.puddles.push({ x: d.x, y: 490 + Math.random() * 10, life: 20, maxLife: 20 });
         }
-        w.rainDrops.splice(i, 1);
+        w.rainDrops[i] = w.rainDrops[len - 1];
+        len--;
       }
     }
+    w.rainDrops.length = len;
   } else {
     w.cooldown--;
     if (w.cooldown <= 0) {
       w.raining = true;
       w.rainTimer = RAIN_DURATION;
     }
-    // Clear lingering drops
-    if (w.rainDrops.length > 0) {
-      for (let i = w.rainDrops.length - 1; i >= 0; i--) {
-        w.rainDrops[i].y += w.rainDrops[i].speed;
-        if (w.rainDrops[i].y > 500) w.rainDrops.splice(i, 1);
+    // Clear lingering drops — swap-and-pop
+    let len = w.rainDrops.length;
+    for (let i = len - 1; i >= 0; i--) {
+      w.rainDrops[i].y += w.rainDrops[i].speed;
+      if (w.rainDrops[i].y > 500) {
+        w.rainDrops[i] = w.rainDrops[len - 1];
+        len--;
       }
     }
+    w.rainDrops.length = len;
   }
 
   // ── Wind gusts ──
@@ -101,11 +106,16 @@ export function updateWeather(w, tick) {
     }
   }
 
-  // ── Puddles fade ──
-  for (let i = w.puddles.length - 1; i >= 0; i--) {
+  // ── Puddles fade ── swap-and-pop
+  let pLen = w.puddles.length;
+  for (let i = pLen - 1; i >= 0; i--) {
     w.puddles[i].life--;
-    if (w.puddles[i].life <= 0) w.puddles.splice(i, 1);
+    if (w.puddles[i].life <= 0) {
+      w.puddles[i] = w.puddles[pLen - 1];
+      pLen--;
+    }
   }
+  w.puddles.length = pLen;
 }
 
 export function drawRain(ctx, weather) {

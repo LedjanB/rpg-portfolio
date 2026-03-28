@@ -392,9 +392,54 @@ function drawUniqueFeatures(ctx, b, px, py, w, h) {
   }
 }
 
+// ── Building pre-render cache ──
+// Buildings are completely static — render once to offscreen canvas, then blit.
+// Saves hundreds of fillRect/arc calls per building per frame.
+const _buildingCache = new Map();
+const PADDING = 30; // extra pixels around building for overhangs, shadows, decorations
+
+function getOrCreateBuildingCache(b) {
+  if (_buildingCache.has(b.id)) return _buildingCache.get(b.id);
+
+  const w = b.w * T, h = b.h * T;
+  // Generous bounds to capture roof overhangs, shadows, chimneys, decorations
+  const cw = w + PADDING * 2 + 20;
+  const ch = h + PADDING * 2 + 30;
+  const offscreen = document.createElement("canvas");
+  offscreen.width = cw;
+  offscreen.height = ch;
+  const octx = offscreen.getContext("2d");
+  octx.imageSmoothingEnabled = false;
+
+  // Render the building at a local offset so everything fits
+  // localPx/localPy correspond to where px,py would be in the offscreen canvas
+  const localPx = PADDING + 10;
+  const localPy = PADDING + 20;
+  // Door needs special handling — compute local door X
+  const localDoorX = (b.doorX - b.x) * T + localPx;
+
+  _renderBuilding(octx, b, localPx, localPy, w, h, localDoorX);
+
+  const entry = { canvas: offscreen, ox: localPx, oy: localPy };
+  _buildingCache.set(b.id, entry);
+  return entry;
+}
+
 export function building(ctx, b, cx, cy) {
   const px = b.x * T - cx, py = b.y * T - cy, w = b.w * T, h = b.h * T;
-  if (px + w < -T || px > CW + T || py + h < -T || py > CH + T) return;
+  if (px + w < -T - PADDING || px > CW + T + PADDING || py + h < -T - PADDING || py > CH + T + PADDING) return;
+
+  const cached = getOrCreateBuildingCache(b);
+  // Draw the cached canvas, offsetting so building lines up with world position
+  ctx.drawImage(cached.canvas, px - cached.ox, py - cached.oy);
+}
+
+// Clear cache (call on cleanup)
+export function clearBuildingCache() {
+  _buildingCache.clear();
+}
+
+function _renderBuilding(ctx, b, px, py, w, h, dx) {
 
   const wallTop = py + T;
   const wallH = h - T - 8;
@@ -547,7 +592,6 @@ export function building(ctx, b, cx, cy) {
   }
 
   // ── Door ──
-  const dx = b.doorX * T - cx;
   const fY = py + h - T - 6;
 
   // Door awning (striped)

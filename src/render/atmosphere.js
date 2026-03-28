@@ -41,8 +41,10 @@ export function waterShimmer(ctx, camX, camY, tick) {
   const ec = Math.min(sc + WORLD.viewportW + 2, WORLD.cols);
   const er = Math.min(sr + WORLD.viewportH + 2, WORLD.rows);
 
+  // Batch all shimmer lines into a single path — one draw call
   ctx.strokeStyle = "rgba(120,180,255,0.15)";
   ctx.lineWidth = 1;
+  ctx.beginPath();
   for (let r = sr; r < er; r++) {
     for (let c = sc; c < ec; c++) {
       if (!MAP.water.has(`${c},${r}`)) continue;
@@ -50,20 +52,17 @@ export function waterShimmer(ctx, camX, camY, tick) {
       const py = r * T - camY;
       const offset = (tick * 0.5 + c * 8 + r * 4) % T;
 
-      ctx.beginPath();
       ctx.moveTo(px + offset, py);
       ctx.lineTo(px + offset + 8, py + T);
-      ctx.stroke();
 
       if ((c + r) % 2 === 0) {
         const offset2 = (tick * 0.3 + c * 12) % T;
-        ctx.beginPath();
         ctx.moveTo(px + offset2, py + T);
         ctx.lineTo(px + offset2 + 6, py);
-        ctx.stroke();
       }
     }
   }
+  ctx.stroke();
 }
 
 // ─── NPC EMOTE BUBBLES ─────────────────────────────────────────

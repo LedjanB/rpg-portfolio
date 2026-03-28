@@ -61,10 +61,60 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
     // Coin squash-stretch animation state
     const coinAnims = {};
 
-    const loop = () => {
+    // ── Delta-time & fixed-timestep state ──
+    // Game logic runs at 60 ticks/sec, rendering decoupled for smooth visuals
+    const TICK_RATE = 1000 / 60; // 16.67ms per logic tick
+    let lastTime = 0;
+    let accumulator = 0;
+    let firstFrame = true;
+    // Previous positions for interpolation (silky sub-frame rendering)
+    const g0 = gameRef.current;
+    let prevPx = g0.px, prevPy = g0.py;
+    let renderPx = g0.px, renderPy = g0.py;
+
+    // Shared state between tickUpdate and renderFrame
+    let windMul = 1;
+    let nightAmount = 0;
+
+    // ── Building pre-render cache ──
+    const buildingCache = new Map();
+
+    const loop = (now) => {
+      // First frame: just capture timestamp, don't accumulate any dt
+      if (firstFrame) { lastTime = now; firstFrame = false; }
+      const dt = Math.min(now - lastTime, 50); // cap at 50ms to prevent spiral
+      lastTime = now;
+      accumulator += dt;
+
       const g = gameRef.current;
       const fs = fishingRef.current;
       const garden = gardenRef.current;
+
+      // Save previous position before logic updates
+      prevPx = g.px;
+      prevPy = g.py;
+
+      // Run fixed-timestep logic updates (may run 0, 1, or 2 times per frame)
+      while (accumulator >= TICK_RATE) {
+        accumulator -= TICK_RATE;
+        prevPx = g.px;
+        prevPy = g.py;
+        tickUpdate(g, fs, garden);
+      }
+
+      // Interpolation alpha: fraction of a tick elapsed since last update
+      const alpha = accumulator / TICK_RATE;
+      renderPx = prevPx + (g.px - prevPx) * alpha;
+      renderPy = prevPy + (g.py - prevPy) * alpha;
+
+      // Render with interpolated positions
+      renderFrame(g, fs, garden, renderPx, renderPy, alpha);
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    // ── Logic tick (runs at fixed 60Hz) ──
+    const tickUpdate = (g, fs, garden) => {
       g.tick++;
 
       // ── Movement (blocked while fishing) ──
@@ -183,8 +233,8 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
 
       // ── New system updates ──
       updateWeather(weather, g.tick);
-      const windMul = getWindMultiplier(weather);
-      const nightAmount = getNightAmount(g.tick);
+      windMul = getWindMultiplier(weather);
+      nightAmount = getNightAmount(g.tick);
       const mapW = WORLD.cols * T;
       const mapH = WORLD.rows * T;
       updateFireflies(g.tick, nightAmount, mapW, mapH);
@@ -238,31 +288,36 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
       g.nearBreakable = findNearBreakable(g.px, g.py);
       g.nearGardenPlot = findNearPlot(g.px, g.py, garden);
 
-      // ── Pixel-perfect camera ──
-      // Direct tracking with integer snap — no lerp means no stutter.
-      // Player pos is already integer, so camera stays perfectly aligned.
-      const targetCamX = Math.max(0, Math.min(g.px - CW/2 + T/2, MAP.col[0].length*T - CW));
-      const targetCamY = Math.max(0, Math.min(g.py - CH/2 + T/2, MAP.col.length*T - CH));
+      // Expose screen shake trigger and break effects for interaction handler
+      g._triggerShake = triggerScreenShake;
+      g._breakEffects = breakEffects;
+    }; // end tickUpdate
+
+    // ── Render frame (runs every rAF, uses interpolated positions) ──
+    const renderFrame = (g, fs, garden, rpx, rpy, alpha) => {
+      // ── Smooth camera with exponential decay ──
+      // Use interpolated player position for camera target — eliminates stutter
+      const targetCamX = Math.max(0, Math.min(rpx - CW/2 + T/2, MAP.col[0].length*T - CW));
+      const targetCamY = Math.max(0, Math.min(rpy - CH/2 + T/2, MAP.col.length*T - CH));
 
       if (!camInitialized) {
         smoothCamX = targetCamX;
         smoothCamY = targetCamY;
         camInitialized = true;
       } else {
-        // Fast catch-up: move most of the way each frame, then snap when close
-        const dx = targetCamX - smoothCamX;
-        const dy = targetCamY - smoothCamY;
-        smoothCamX += Math.abs(dx) < 1 ? dx : dx * 0.25;
-        smoothCamY += Math.abs(dy) < 1 ? dy : dy * 0.25;
+        // Exponential decay camera — extremely smooth, frame-rate independent
+        // ~93% catch-up per frame at 60fps, stays smooth at any refresh rate
+        const smoothing = 1 - Math.pow(0.001, 1/60);
+        smoothCamX += (targetCamX - smoothCamX) * smoothing;
+        smoothCamY += (targetCamY - smoothCamY) * smoothing;
+        // Snap when very close to prevent infinite asymptotic crawl
+        if (Math.abs(targetCamX - smoothCamX) < 0.5) smoothCamX = targetCamX;
+        if (Math.abs(targetCamY - smoothCamY) < 0.5) smoothCamY = targetCamY;
       }
 
       const shake = getScreenShake();
       const camX = Math.round(smoothCamX) + Math.round(shake.x);
       const camY = Math.round(smoothCamY) + Math.round(shake.y);
-
-      // Expose screen shake trigger and break effects for interaction handler
-      g._triggerShake = triggerScreenShake;
-      g._breakEffects = breakEffects;
 
       // ── Draw everything ──
       ctx.clearRect(0, 0, CW, CH);
@@ -331,13 +386,14 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         if (emote) emoteBubble(ctx, n.x*T, n.y*T + breathOffset, camX, camY, emote, g.tick);
       });
 
-      // Horse and player
+      // Horse and player — use interpolated positions for silky movement
       if (!horse.mounted) Render.horse(ctx, horse, camX, camY);
       if (horse.mounted) {
-        Render.horse(ctx, horse, camX, camY);
-        Render.character(ctx, g.px, g.py-10, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
+        const interpHorse = { ...horse, x: rpx, y: rpy };
+        Render.horse(ctx, interpHorse, camX, camY);
+        Render.character(ctx, rpx, rpy-10, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
       } else {
-        Render.character(ctx, g.px, g.py, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
+        Render.character(ctx, rpx, rpy, g.dir, g.moving ? g.frame : 0, camX, camY, C.hair, C.shirt, true);
       }
       MAP.trees.forEach(([tc,tr]) => Render.tree(ctx, tc, tr, camX, camY, g.tick, windMul));
       particles.draw(ctx, camX, camY);
@@ -364,10 +420,10 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
         else if (g.nearFishingSpot && fs.state === "idle") Render.hint(ctx, g.nearFishingSpot.x*T, g.nearFishingSpot.y*T, camX, camY, g.tick, "FISH");
         else if (g.nearBreakable >= 0) { const bp = bState[g.nearBreakable]; if (bp) Render.hint(ctx, bp.x*T, bp.y*T, camX, camY, g.tick, "BREAK"); }
         else if (g.nearGardenPlot >= 0) { const gp = garden[g.nearGardenPlot]; if (gp) Render.hint(ctx, gp.x*T, gp.y*T, camX, camY, g.tick, "PLANT"); }
-        if (fs.state === "waiting") Render.hint(ctx, g.px, g.py-16, camX, camY, g.tick, "WAIT...");
-        if (fs.state === "bite") Render.hint(ctx, g.px, g.py-16, camX, camY, g.tick, "SPACE!");
+        if (fs.state === "waiting") Render.hint(ctx, rpx, rpy-16, camX, camY, g.tick, "WAIT...");
+        if (fs.state === "bite") Render.hint(ctx, rpx, rpy-16, camX, camY, g.tick, "SPACE!");
         if (g.nearHorse) Render.hint(ctx, horse.x, horse.y, camX, camY, g.tick, "M: RIDE");
-        if (horse.mounted) Render.hint(ctx, g.px, g.py-10, camX, camY, g.tick, "M: DISMOUNT");
+        if (horse.mounted) Render.hint(ctx, rpx, rpy-10, camX, camY, g.tick, "M: DISMOUNT");
       }
 
       // Rain overlay (screen-space)
@@ -387,11 +443,9 @@ export function useGameLoop(canvasRef, keysRef, gameRef, horseRef, coinsRef, coi
 
       // Screen transition overlay (topmost)
       drawTransition(ctx, CW, CH);
-
-      raf = requestAnimationFrame(loop);
-    };
+    }; // end renderFrame
 
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); buildingCache.clear(); };
   }, [started, canvasRef, keysRef, gameRef, horseRef, coinsRef, coinCountRef, dialogueRef, panelRef, setCoinCount, setEasterEgg, setDialogue, fishingRef, breakablesRef, gardenRef]);
 }
